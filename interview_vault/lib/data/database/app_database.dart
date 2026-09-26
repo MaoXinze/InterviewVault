@@ -46,15 +46,19 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-          // 预置 5 个系统标签（PRD 2.5）
-          await tagsDao.seedSystemTags();
-        },
+        onCreate: (m) => m.createAll(),
         // v1 起维护迁移：后续版本在 onUpgrade 里按 fromSchemaVersion 升级，
         // 禁止破坏性重建（AGENTS 工程纪律 3）
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
+          // 兜底补种：onCreate 只在新库执行；web 端浏览器里可能存在
+          // 建库早于种子逻辑或被清空过的库，保证系统标签永远在
+          final row = await customSelect(
+            'SELECT COUNT(*) AS c FROM tags',
+          ).getSingle();
+          if ((row.data['c'] as int) == 0) {
+            await tagsDao.seedSystemTags();
+          }
         },
       );
 }
