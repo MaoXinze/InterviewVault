@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../network/ai_providers.dart';
-import '../providers.dart';
+import '../../../core/providers.dart';
 
 /// API 服务商配置页（PRD 2.2）。
 ///

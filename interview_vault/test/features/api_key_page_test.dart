@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:interview_vault/data/database/app_database.dart';
 import 'package:interview_vault/data/secure/key_storage.dart';
 import 'package:interview_vault/features/api_key/presentation/api_key_page.dart';
-import 'package:interview_vault/features/api_key/providers.dart';
+import 'package:interview_vault/core/providers.dart';
 import 'package:mocktail/mocktail.dart';
 
 class _FakeKeyStorage extends Mock implements KeyStorage {

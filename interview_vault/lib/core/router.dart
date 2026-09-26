@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/home/presentation/home_page.dart';
+import '../features/api_key/presentation/api_key_page.dart';
 import '../features/interviews/presentation/interviews_page.dart';
 import '../features/recording/presentation/recording_page.dart';
 import '../features/review/presentation/review_page.dart';
+import '../features/settings/presentation/privacy_page.dart';
 import '../features/settings/presentation/settings_page.dart';
 
 /// 四 Tab + 中央 ⏺（AGENTS 命名铁律：首页 / 面试 / ⏺ / 回顾 / 我的）。
@@ -56,6 +58,14 @@ final appRouter = GoRouter(
       path: '/record',
       builder: (context, state) => const RecordingPage(),
     ),
+    GoRoute(
+      path: '/api-key',
+      builder: (context, state) => const ApiKeyPage(),
+    ),
+    GoRoute(
+      path: '/privacy',
+      builder: (context, state) => const PrivacyPage(),
+    ),
   ],
 );
 
@@ -87,6 +97,7 @@ class AppShell extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _TabItem(
+              key: const Key('tab_home'),
               icon: Icons.home_outlined,
               activeIcon: Icons.home,
               label: '首页',
@@ -94,6 +105,7 @@ class AppShell extends StatelessWidget {
               onTap: () => _goBranch(0),
             ),
             _TabItem(
+              key: const Key('tab_interviews'),
               icon: Icons.work_outline,
               activeIcon: Icons.work,
               label: '面试',
@@ -102,6 +114,7 @@ class AppShell extends StatelessWidget {
             ),
             const SizedBox(width: 56),
             _TabItem(
+              key: const Key('tab_review'),
               icon: Icons.style_outlined,
               activeIcon: Icons.style,
               label: '回顾',
@@ -109,6 +122,7 @@ class AppShell extends StatelessWidget {
               onTap: () => _goBranch(2),
             ),
             _TabItem(
+              key: const Key('tab_settings'),
               icon: Icons.person_outline,
               activeIcon: Icons.person,
               label: '我的',
@@ -124,6 +138,7 @@ class AppShell extends StatelessWidget {
 
 class _TabItem extends StatelessWidget {
   const _TabItem({
+    super.key,
     required this.icon,
     required this.activeIcon,
     required this.label,

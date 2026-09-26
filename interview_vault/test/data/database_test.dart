@@ -148,6 +148,8 @@ void main() {
   group('annotations 按标签筛选', () {
     test('filterByTag 只返回指定标签的标注', () async {
       final id = await insertInterview();
+      // createdAt 固定为同一时间戳：排序结果由次序键 id 决定，不受时钟影响
+      const ts = '2026-09-26T10:00:00.000';
       for (final entry in {
         'an-q': 'question',
         'an-h': 'highlight',
@@ -159,6 +161,8 @@ void main() {
             id: entry.key,
             interviewId: id,
             tag: entry.value,
+            createdAt: const Value(ts),
+            updatedAt: const Value(ts),
           ),
         );
       }
