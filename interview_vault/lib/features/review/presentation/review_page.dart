@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/motion.dart';
 import '../../../core/providers.dart';
+import '../../../core/theme.dart';
 import '../../../core/widgets/motion.dart';
 import '../../../data/database/app_database.dart';
 
@@ -16,6 +17,16 @@ class ReviewPage extends ConsumerStatefulWidget {
 
 class _ReviewPageState extends ConsumerState<ReviewPage> {
   final Set<String> _selectedTags = {};
+
+  /// 语义色小圆点：性格与信息量兼得（与系统标签一一对应）
+  Color? _tagDotColor(String name) => switch (name) {
+        '问题' => const Color(0xFF5B8DEF),
+        '回答' => const Color(0xFF3D9B6F),
+        '亮点' => AppTheme.sunshine,
+        '失误' => const Color(0xFFE4574C),
+        '待改进' => const Color(0xFFE8873B),
+        _ => null,
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +51,11 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
             child: SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  // 阳光 CTA：全局唯一的柠檬绿主行动
+                  backgroundColor: AppTheme.limeCta,
+                  foregroundColor: AppTheme.onLimeCta,
+                ),
                 onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
@@ -68,6 +84,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
                   _TagChip(
                     label: tag.name,
                     active: _selectedTags.contains(tag.name),
+                    dot: _tagDotColor(tag.name),
                     onTap: () => setState(() {
                       _selectedTags.contains(tag.name)
                           ? _selectedTags.remove(tag.name)
@@ -122,11 +139,15 @@ class _TagChip extends StatelessWidget {
     required this.label,
     required this.active,
     required this.onTap,
+    this.dot,
   });
 
   final String label;
   final bool active;
   final VoidCallback onTap;
+
+  /// 语义色小圆点（可空：如"全部"）
+  final Color? dot;
 
   @override
   Widget build(BuildContext context) {
@@ -152,14 +173,30 @@ class _TagChip extends StatelessWidget {
               color: active ? colorScheme.primary : colorScheme.outlineVariant,
             ),
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: active
-                  ? colorScheme.onPrimaryContainer
-                  : colorScheme.onSurfaceVariant,
-              fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (dot != null) ...[
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: dot,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  color: active
+                      ? colorScheme.onPrimaryContainer
+                      : colorScheme.onSurfaceVariant,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ],
           ),
         ),
       ),
