@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers.dart';
+import '../../../core/theme.dart';
 import '../../../core/widgets/motion.dart';
 
 /// 首页：时间问候 + 快捷入口 + 待回顾 hero（卡片堆叠 + 数字滚动）+ 最近面试。
@@ -146,7 +147,9 @@ class _GreetingHeader extends StatelessWidget {
           children: [
             Text(_dateLabel,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppTheme.gold
+                          : AppTheme.goldDeep,
                       fontWeight: FontWeight.w600,
                     )),
             const SizedBox(width: 8),
@@ -207,11 +210,13 @@ class _ReviewHero extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
-              gradient: LinearGradient(
+              // 墨绿金库块：两种模式下同一块"库"，金字点睛
+              gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [colorScheme.primary, colorScheme.tertiary],
+                colors: [Color(0xFF1E3A2E), Color(0xFF12241C)],
               ),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
             child: Row(
               children: [
@@ -229,7 +234,7 @@ class _ReviewHero extends StatelessWidget {
                                 .textTheme
                                 .displaySmall
                                 ?.copyWith(
-                                  color: colorScheme.onPrimary,
+                                  color: AppTheme.gold,
                                   fontWeight: FontWeight.w700,
                                 ),
                           ),
@@ -239,7 +244,7 @@ class _ReviewHero extends StatelessWidget {
                             style: Theme.of(context)
                                 .textTheme
                                 .titleMedium
-                                ?.copyWith(color: colorScheme.onPrimary),
+                                ?.copyWith(color: Colors.white),
                           ),
                         ],
                       ),
@@ -247,14 +252,13 @@ class _ReviewHero extends StatelessWidget {
                       Text(
                         '把面试里的问题变成你的资产',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onPrimary
-                                  .withValues(alpha: 0.85),
+                              color: Colors.white.withValues(alpha: 0.75),
                             ),
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right, color: colorScheme.onPrimary),
+                const Icon(Icons.chevron_right, color: Colors.white70),
               ],
             ),
           ),

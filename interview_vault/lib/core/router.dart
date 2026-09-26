@@ -9,6 +9,7 @@ import '../features/review/presentation/review_page.dart';
 import '../features/settings/presentation/privacy_page.dart';
 import '../features/settings/presentation/settings_page.dart';
 import 'motion.dart';
+import 'theme.dart';
 import 'widgets/motion.dart';
 
 /// 四 Tab + 中央 ⏺（AGENTS 命名铁律：首页 / 面试 / ⏺ / 回顾 / 我的）。
@@ -91,10 +92,7 @@ class AppShell extends StatelessWidget {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Theme.of(context)
-                    .colorScheme
-                    .primary
-                    .withValues(alpha: 0.35),
+                color: AppTheme.gold.withValues(alpha: 0.4),
                 blurRadius: 18,
                 spreadRadius: 1,
               ),
@@ -104,7 +102,11 @@ class AppShell extends StatelessWidget {
             key: const Key('tab_record'),
             onPressed: () => context.push('/record'),
             shape: const CircleBorder(),
-            child: const Icon(Icons.fiber_manual_record),
+            backgroundColor: AppTheme.gold,
+            child: const Icon(
+              Icons.fiber_manual_record,
+              color: AppTheme.onGold,
+            ),
           ),
         ),
       ),
@@ -175,7 +177,9 @@ class _TabItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final color = selected
-        ? colorScheme.primary
+        ? (Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.gold
+            : AppTheme.goldDeep)
         : colorScheme.onSurfaceVariant;
     return Expanded(
       child: InkWell(

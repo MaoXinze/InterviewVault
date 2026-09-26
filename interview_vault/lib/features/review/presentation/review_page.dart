@@ -22,7 +22,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
   Color? _tagDotColor(String name) => switch (name) {
         '问题' => const Color(0xFF5B8DEF),
         '回答' => const Color(0xFF3D9B6F),
-        '亮点' => AppTheme.sunshine,
+        '亮点' => AppTheme.gold,
         '失误' => const Color(0xFFE4574C),
         '待改进' => const Color(0xFFE8873B),
         _ => null,
@@ -50,21 +50,37 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: SizedBox(
               width: double.infinity,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  // 阳光 CTA：全局唯一的柠檬绿主行动
-                  backgroundColor: AppTheme.limeCta,
-                  foregroundColor: AppTheme.onLimeCta,
+              child: DecoratedBox(
+                // 硬边按压：鎏金 CTA 的签名质感（Duolingo 式厚度）
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: AppTheme.goldEdge,
+                      offset: Offset(0, 3),
+                      blurRadius: 0,
+                    ),
+                  ],
                 ),
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      cards.isEmpty ? '暂无卡片，先去积累问题吧' : '翻卡模式将在 W3 提供',
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.gold,
+                    foregroundColor: AppTheme.onGold,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
+                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        cards.isEmpty ? '暂无卡片，先去积累问题吧' : '翻卡模式将在 W3 提供',
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.style),
+                  label: const Text('开始回顾'),
                 ),
-                icon: const Icon(Icons.style),
-                label: const Text('开始回顾'),
               ),
             ),
           ),
