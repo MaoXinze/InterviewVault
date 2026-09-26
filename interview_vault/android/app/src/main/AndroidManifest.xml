@@ -1,6 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- AI 请求由客户端直连用户配置的服务商（执行修订：无后端、用户自持 AI） -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 录音（W2）：麦克风 + 前台服务（锁屏后台录音）+ 常驻通知 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="InterviewVault"
         android:name="${applicationName}"

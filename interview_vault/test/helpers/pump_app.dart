@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:interview_vault/core/providers.dart';
+import 'package:interview_vault/features/recording/recorder_service.dart';
 import 'package:interview_vault/data/database/app_database.dart';
 import 'package:interview_vault/data/secure/key_storage.dart';
 import 'package:interview_vault/main.dart';
@@ -27,14 +28,18 @@ class FakeKeyStorage extends Mock implements KeyStorage {
   Future<bool> has(String provider) async => store.containsKey('apikey.$provider');
 }
 
-/// 泵起完整 App（内存数据库 + 桩 KeyStorage）。
-Future<AppDatabase> pumpInterviewVaultApp(WidgetTester tester) async {
+/// 泵起完整 App（内存数据库 + 桩 KeyStorage），可注入自定义录音服务。
+Future<AppDatabase> pumpInterviewVaultApp(
+  WidgetTester tester, {
+  RecorderService? recorder,
+}) async {
   final db = AppDatabase.forTesting(NativeDatabase.memory());
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         appDatabaseProvider.overrideWithValue(db),
         keyStorageProvider.overrideWithValue(FakeKeyStorage()),
+        if (recorder != null) recorderServiceProvider.overrideWithValue(recorder),
       ],
       child: const InterviewVaultApp(),
     ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/database/app_database.dart';
 import '../data/secure/key_storage.dart';
 import '../features/api_key/ai_config_service.dart';
+import '../features/recording/recorder_service.dart';
 import 'widgets/theme_reveal.dart';
 
 /// 数据库单例：W1 起全程复用（drift 内部管理连接）。
@@ -52,4 +53,11 @@ final themeRevealControllerProvider = Provider<ThemeRevealController>((ref) {
   final controller = ThemeRevealController();
   ref.onDispose(controller.dispose);
   return controller;
+});
+
+/// 录音服务：录音页的状态与动作源（record 插件封装）。
+final recorderServiceProvider = Provider<RecorderService>((ref) {
+  final service = RecorderService();
+  ref.onDispose(service.dispose);
+  return service;
 });
