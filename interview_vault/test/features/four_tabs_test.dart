@@ -13,7 +13,8 @@ void main() {
     expect(find.text('新录音'), findsOneWidget);
     expect(find.text('导入音频'), findsOneWidget);
     expect(find.text('模拟面试'), findsOneWidget);
-    expect(find.text('0 道题待回顾'), findsOneWidget);
+    expect(find.text('0'), findsOneWidget);
+    expect(find.text('道题待回顾'), findsOneWidget);
 
     await drainAppTimers(tester);
   });
@@ -41,7 +42,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('2 道题待回顾'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+    expect(find.text('道题待回顾'), findsOneWidget);
 
     await drainAppTimers(tester);
   });
@@ -53,6 +55,8 @@ void main() {
     await tester.tap(find.byKey(const Key('tab_interviews')));
     await tester.pumpAndSettle();
     expect(find.text('还没有面试记录'), findsOneWidget);
+    // 空列表时搜索框不出现（避免"不知道搜什么"的困惑）
+    expect(find.byKey(const Key('field_search')), findsNothing);
 
     await db.interviewsDao.insertOne(
       InterviewsCompanion.insert(
@@ -63,8 +67,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('字节跳动'), findsOneWidget);
-    expect(find.text('客户端工程师'), findsOneWidget);
+    final pageScope = find.byKey(const Key('page_interviews'));
+    expect(
+      find.descendant(of: pageScope, matching: find.text('字节跳动')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: pageScope, matching: find.text('客户端工程师')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('field_search')), findsOneWidget);
 
     await drainAppTimers(tester);
   });

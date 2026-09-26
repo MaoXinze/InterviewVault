@@ -8,6 +8,8 @@ import '../features/recording/presentation/recording_page.dart';
 import '../features/review/presentation/review_page.dart';
 import '../features/settings/presentation/privacy_page.dart';
 import '../features/settings/presentation/settings_page.dart';
+import 'motion.dart';
+import 'widgets/motion.dart';
 
 /// 四 Tab + 中央 ⏺（AGENTS 命名铁律：首页 / 面试 / ⏺ / 回顾 / 我的）。
 ///
@@ -83,11 +85,28 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: navigationShell,
-      floatingActionButton: FloatingActionButton(
-        key: const Key('tab_record'),
-        onPressed: () => context.push('/record'),
-        shape: const CircleBorder(),
-        child: const Icon(Icons.fiber_manual_record),
+      floatingActionButton: PressableScale(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Theme.of(context)
+                    .colorScheme
+                    .primary
+                    .withValues(alpha: 0.35),
+                blurRadius: 18,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: FloatingActionButton(
+            key: const Key('tab_record'),
+            onPressed: () => context.push('/record'),
+            shape: const CircleBorder(),
+            child: const Icon(Icons.fiber_manual_record),
+          ),
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomAppBar(
@@ -170,7 +189,13 @@ class _TabItem extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(selected ? activeIcon : icon, color: color, size: 24),
+                AnimatedScale(
+                  scale: selected ? 1.15 : 1.0,
+                  duration: Motion.fast,
+                  curve: selected ? Motion.spring : Motion.emphasized,
+                  child: Icon(selected ? activeIcon : icon,
+                      color: color, size: 24),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   label,

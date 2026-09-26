@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
+import '../../../core/widgets/arc_dismiss.dart';
+import '../../../core/widgets/motion.dart';
 
-/// 面试 Tab：历史面试记录列表，支持按公司/岗位关键词即时过滤。
+/// 面试 Tab：历史面试记录列表（按公司/岗位即时过滤）。
+/// 搜索框只在有数据后出现——空列表时它只会让人困惑。
 class InterviewsPage extends ConsumerStatefulWidget {
   const InterviewsPage({super.key});
 
@@ -32,19 +35,20 @@ class _InterviewsPageState extends ConsumerState<InterviewsPage> {
       appBar: AppBar(title: const Text('面试')),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: TextField(
-              key: const Key('field_search'),
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                hintText: '搜索公司 / 岗位',
-                border: OutlineInputBorder(),
-                isDense: true,
+          if (interviews.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: TextField(
+                key: const Key('field_search'),
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  hintText: '搜索公司 / 岗位',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                onChanged: (v) => setState(() => _query = v.trim()),
               ),
-              onChanged: (v) => setState(() => _query = v.trim()),
             ),
-          ),
           Expanded(
             child: filtered.isEmpty
                 ? const Center(
@@ -62,21 +66,33 @@ class _InterviewsPageState extends ConsumerState<InterviewsPage> {
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
                       final interview = filtered[index];
-                      return Card(
-                        child: ListTile(
-                          title: Text(interview.company ?? '未填公司'),
-                          subtitle: Text([
-                            interview.position ?? '未填岗位',
-                            interview.round ?? '',
-                            interview.interviewDate ?? '',
-                          ].where((s) => s.isNotEmpty).join(' · ')),
-                          trailing: _StatusChip(status: interview.status),
-                          onTap: () => ScaffoldMessenger.of(context)
-                              .showSnackBar(
-                                const SnackBar(
-                                  content: Text('面试详情页将在 W2 提供'),
+                      return StaggeredItem(
+                        index: index,
+                        child: ArcDismiss(
+                          onDeleted: () => _deleteInterview(interview.id),
+                          child: Builder(
+                            builder: (context) => Card(
+                              child: ListTile(
+                                title: Text(interview.company ?? '未填公司'),
+                                subtitle: Text([
+                                  interview.position ?? '未填岗位',
+                                  interview.round ?? '',
+                                  interview.interviewDate ?? '',
+                                ].where((s) => s.isNotEmpty).join(' · ')),
+                                trailing: IconButton(
+                                  key: Key('menu_${interview.id}'),
+                                  icon: const Icon(Icons.more_vert),
+                                  onPressed: () => ArcDismiss.maybeOf(context)
+                                      ?.confirmAndDismiss(),
+                                ),
+                                onTap: () => ScaffoldMessenger.of(context)
+                                    .showSnackBar(
+                                  const SnackBar(
+                                      content: Text('面试详情页将在 W2 提供')),
                                 ),
                               ),
+                            ),
+                          ),
                         ),
                       );
                     },
@@ -86,22 +102,11 @@ class _InterviewsPageState extends ConsumerState<InterviewsPage> {
       ),
     );
   }
-}
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final labels = {
-      'draft': '草稿',
-      'transcribed': '已转写',
-      'annotated': '已标注',
-      'summarized': '已总结',
-    };
-    return Text(labels[status] ?? status,
-        style: Theme.of(context).textTheme.labelSmall);
+  Future<void> _deleteInterview(String id) async {
+    await ref.read(appDatabaseProvider).interviewsDao.deleteOne(id);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('已删除')));
   }
 }

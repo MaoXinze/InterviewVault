@@ -40,6 +40,9 @@ Future<AppDatabase> pumpInterviewVaultApp(WidgetTester tester) async {
     ),
   );
   await tester.pumpAndSettle();
+  // 断言失败中断测试时 tearDown 仍会执行本排空，
+  // 避免挂起的 Timer 拖垮同文件后续用例
+  addTearDown(() => drainAppTimers(tester));
   return db;
 }
 

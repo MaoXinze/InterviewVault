@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/database/app_database.dart';
 import '../data/secure/key_storage.dart';
 import '../features/api_key/ai_config_service.dart';
+import 'widgets/theme_reveal.dart';
 
 /// 数据库单例：W1 起全程复用（drift 内部管理连接）。
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -38,4 +39,17 @@ final interviewsStreamProvider = StreamProvider<List<Interview>>((ref) {
 final flashcardsStreamProvider = StreamProvider<List<Flashcard>>((ref) {
   final db = ref.watch(appDatabaseProvider);
   return db.flashcardsDao.watchAll();
+});
+
+/// 标签流（回顾页筛选 chips，含系统与自定义）。
+final tagsStreamProvider = StreamProvider<List<Tag>>((ref) {
+  final db = ref.watch(appDatabaseProvider);
+  return db.tagsDao.watchAll();
+});
+
+/// 圆形主题切换控制器（模式① Radial Theme Transition）。
+final themeRevealControllerProvider = Provider<ThemeRevealController>((ref) {
+  final controller = ThemeRevealController();
+  ref.onDispose(controller.dispose);
+  return controller;
 });

@@ -2,14 +2,45 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/motion.dart';
+import '../../../core/providers.dart';
 import '../../../core/theme.dart';
 
-/// 我的 Tab：API 服务配置（真实可用）、主题切换、数据管理占位、隐私占位。
-class SettingsPage extends ConsumerWidget {
+/// 我的 Tab：API 服务配置（真实可用）、主题圆形扩散切换、数据管理占位、隐私占位。
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends ConsumerState<SettingsPage> {
+  /// 定位深色开关：圆形主题扩散的触发点
+  final GlobalKey _darkTileKey = GlobalKey();
+
+  void _toggleTheme(bool dark) {
+    void applyTheme() => ref
+        .read(themeModeProvider.notifier)
+        .set(dark ? ThemeMode.dark : ThemeMode.light);
+    final box =
+        _darkTileKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) {
+      applyTheme();
+      return;
+    }
+    // 开关在行尾：取行右侧、垂直居中附近的点作为扩散圆心
+    final center =
+        box.localToGlobal(Offset(box.size.width - 56, box.size.height / 2));
+    ref.read(themeRevealControllerProvider).reveal(
+          center: center,
+          applyTheme: applyTheme,
+          pixelRatio: MediaQuery.devicePixelRatioOf(context),
+          reducedMotion: prefersReducedMotion(context),
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
 
     return Scaffold(
@@ -28,14 +59,15 @@ class SettingsPage extends ConsumerWidget {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/api-key'),
                 ),
-                SwitchListTile(
-                  key: const Key('settings_dark_mode'),
-                  secondary: const Icon(Icons.dark_mode),
-                  title: const Text('深色模式'),
-                  value: themeMode == ThemeMode.dark,
-                  onChanged: (dark) => ref
-                      .read(themeModeProvider.notifier)
-                      .set(dark ? ThemeMode.dark : ThemeMode.light),
+                KeyedSubtree(
+                  key: _darkTileKey,
+                  child: SwitchListTile(
+                    key: const Key('settings_dark_mode'),
+                    secondary: const Icon(Icons.dark_mode),
+                    title: const Text('深色模式'),
+                    value: themeMode == ThemeMode.dark,
+                    onChanged: _toggleTheme,
+                  ),
                 ),
               ],
             ),
