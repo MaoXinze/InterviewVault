@@ -258,10 +258,13 @@ void main() {
       expect(first!.isActive, isFalse);
     });
 
-    test('upsert 更新已有配置而不新建行', () async {
+    test('upsert 更新已有配置而不新建行，且 createdAt 不被重置', () async {
       await db.aiConfigsDao.upsert(
         AiConfigsCompanion.insert(id: 'cfg-1', provider: 'deepseek'),
       );
+      final created = await db.aiConfigsDao.getById('cfg-1');
+      final createdAt = created!.createdAt;
+
       await db.aiConfigsDao.upsert(
         AiConfigsCompanion.insert(
           id: 'cfg-1',
@@ -272,6 +275,7 @@ void main() {
       final rows = await db.aiConfigsDao.getAll();
       expect(rows.length, 1);
       expect(rows.single.modelName, 'deepseek-chat');
+      expect(rows.single.createdAt, createdAt, reason: '重复保存不应重置创建时间');
     });
   });
 

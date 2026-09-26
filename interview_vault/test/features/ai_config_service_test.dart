@@ -122,6 +122,22 @@ void main() {
     expect(await db.aiConfigsDao.getActive(), isNull);
     expect((await db.aiConfigsDao.getAll()).length, 2);
   });
+
+  group('validateBaseUrl', () {
+    test('合法 http/https（含路径与端口）通过', () {
+      expect(validateBaseUrl('https://api.openai.com'), isNull);
+      expect(validateBaseUrl('https://api.openai.com/v1'), isNull);
+      expect(validateBaseUrl('http://192.168.1.10:11434/v1'), isNull);
+    });
+
+    test('非法输入返回错误文案（含空值与无 scheme）', () {
+      expect(validateBaseUrl(''), isNotNull);
+      expect(validateBaseUrl('my host'), isNotNull);
+      expect(validateBaseUrl('api.openai.com'), isNotNull);
+      expect(validateBaseUrl('ftp://example.com'), isNotNull);
+      expect(validateBaseUrl('https://'), isNotNull);
+    });
+  });
 }
 
 /// 模拟 secure storage 平台层写入失败

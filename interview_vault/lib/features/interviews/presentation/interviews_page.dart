@@ -5,6 +5,7 @@ import '../../../core/providers.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/arc_dismiss.dart';
 import '../../../core/widgets/motion.dart';
+import '../../../data/database/app_database.dart';
 
 /// 面试 Tab：历史面试记录列表（按公司/岗位即时过滤）。
 /// 搜索框只在有数据后出现——空列表时它只会让人困惑。
@@ -159,7 +160,7 @@ class _InterviewsPageState extends ConsumerState<InterviewsPage> {
                       return StaggeredItem(
                         index: index,
                         child: ArcDismiss(
-                          onDeleted: () => _deleteInterview(interview.id),
+                          onDeleted: () => _deleteInterview(interview),
                           child: Builder(
                             builder: (context) => Card(
                               child: ListTile(
@@ -194,8 +195,10 @@ class _InterviewsPageState extends ConsumerState<InterviewsPage> {
     );
   }
 
-  Future<void> _deleteInterview(String id) async {
-    await ref.read(appDatabaseProvider).interviewsDao.deleteOne(id);
+  Future<void> _deleteInterview(Interview interview) async {
+    await ref.read(appDatabaseProvider).interviewsDao.deleteOne(interview.id);
+    // 删除即真删（AGENTS 铁律 3）：行删除成功后同步清理音频文件
+    await ref.read(audioFileCleanerProvider)(interview.audioFilePath);
     if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('已删除')));

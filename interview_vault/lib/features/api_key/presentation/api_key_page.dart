@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../network/ai_providers.dart';
 import '../../../core/providers.dart';
+import '../ai_config_service.dart' show validateBaseUrl;
 
 /// API 服务商配置页（PRD 2.2）。
 ///
@@ -85,6 +86,12 @@ class _ApiKeyPageState extends ConsumerState<ApiKeyPage> {
       _showSnack('请先填写 API Key');
       return;
     }
+    // 非法 Base URL 在保存前拦截（合法值会在连接时被 Uri.parse 二次校验）
+    final baseUrlError = validateBaseUrl(_baseUrl.text.trim());
+    if (baseUrlError != null) {
+      _showSnack(baseUrlError);
+      return;
+    }
     setState(() => _saving = true);
     try {
       final service = ref.read(aiConfigServiceProvider);
@@ -117,6 +124,15 @@ class _ApiKeyPageState extends ConsumerState<ApiKeyPage> {
   }
 
   Future<void> _testConnection() async {
+    // 先拦非法 Base URL：LlmClient 构造时 Uri.parse 会同步抛 FormatException
+    final baseUrlError = validateBaseUrl(_baseUrl.text.trim());
+    if (baseUrlError != null) {
+      setState(() {
+        _testMessage = baseUrlError;
+        _testOk = false;
+      });
+      return;
+    }
     setState(() {
       _testing = true;
       _testMessage = null;
@@ -136,6 +152,13 @@ class _ApiKeyPageState extends ConsumerState<ApiKeyPage> {
       setState(() {
         _testMessage = result.message;
         _testOk = result.success;
+      });
+    } on Exception {
+      // 网络栈/构造层的裸异常不透出细节（可能携带端点信息），给通用文案
+      if (!mounted) return;
+      setState(() {
+        _testMessage = '连接测试失败，请检查 Base URL 与网络后重试';
+        _testOk = false;
       });
     } finally {
       if (mounted) setState(() => _testing = false);

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -25,6 +27,8 @@ void main() {
         .thenAnswer((_) async => Amplitude(current: -30, max: -20));
     when(() => recorder.stop()).thenAnswer((_) async => '/recordings/x.wav');
     when(() => recorder.dispose()).thenAnswer((_) async {});
+    when(() => recorder.onStateChanged())
+        .thenAnswer((_) => const Stream<RecordState>.empty());
 
     final service = RecorderService(
       recorder: recorder,

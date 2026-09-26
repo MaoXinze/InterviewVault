@@ -1,8 +1,11 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
+
+import '../../data/local/audio_files.dart';
 
 /// 麦克风权限被拒。
 class RecorderPermissionException implements Exception {
@@ -10,6 +13,16 @@ class RecorderPermissionException implements Exception {
 
   @override
   String toString() => '未获得麦克风权限';
+}
+
+/// 录音链路异常（插件未返回文件路径等）。
+class RecorderException implements Exception {
+  const RecorderException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }
 
 /// 一次录音的产物：文件路径（web 为会话级地址）+ 时长。
@@ -21,25 +34,50 @@ class RecordingResult {
 }
 
 /// 录音服务：封装 record 插件的状态机（待开始 → 录音中 → 已暂停），
-/// 负责计时、电平轮询与文件落位；UI 只消费状态与动作。
+/// 负责计时（Stopwatch 精确累计暂停区间）、电平轮询与文件落位；
+/// UI 只消费状态与动作。
 ///
-/// API 依据 record 6.2.1：start(config, path:) / pause / resume /
-/// stop()→String? / hasPermission / isEncoderSupported / getAmplitude。
+/// record 6.2.1 的 start() 在原生线程失败（编码器不支持、路径不可写等）
+/// 时 Future 正常返回，错误经 onStateChanged 流以 error 事件异步透传，
+/// 因此必须订阅该流，否则会静默假录音。
 class RecorderService extends ChangeNotifier {
   RecorderService({
     AudioRecorder? recorder,
     this.pathResolver,
-  })  : _recorder = recorder ?? AudioRecorder();
+    this.onPlatformError,
+  }) : _recorder = recorder ?? AudioRecorder() {
+    _stateSub = _recorder.onStateChanged().listen(
+          (_) {},
+          onError: (Object error) {
+            // 平台侧异步失败：终结状态机回待开始，并把错误转给 UI 提示
+            _clock.stop();
+            _stopTimers();
+            _state = RecordState.stop;
+            _stopping = false;
+            _level = 0;
+            onPlatformError?.call(error);
+            _notify();
+          },
+        );
+  }
 
   final AudioRecorder _recorder;
 
   /// 音频文件落位解析（测试可注入）；web 为会话级地址
   final Future<String> Function(AudioEncoder encoder)? pathResolver;
 
+  /// 平台侧异步失败回调（start 后原生线程报错经状态流透传）。
+  /// UI 借此弹提示；页面销毁时置 null。
+  void Function(Object error)? onPlatformError;
+
+  StreamSubscription<RecordState>? _stateSub;
+
   Timer? _tick;
   Timer? _meter;
   RecordState _state = RecordState.stop; // stop = 待开始
-  Duration _elapsed = Duration.zero;
+  // clock.stopwatch() 感知 zone 时钟：fake_async 测试中跟随假时钟推进
+  final Stopwatch _clock = clock.stopwatch();  bool _meterBusy = false;
+  bool _stopping = false;
   double _level = 0;
   bool _disposed = false;
 
@@ -50,13 +88,16 @@ class RecorderService extends ChangeNotifier {
   bool get isIdle => _state == RecordState.stop;
   bool get isRecording => _state == RecordState.record;
   bool get isPaused => _state == RecordState.pause;
-  Duration get elapsed => _elapsed;
+
+  /// 停止落库进行中（防双击重复入库）
+  bool get isStopping => _stopping;
+  Duration get elapsed => _clock.elapsed;
 
   /// 当前电平（dBFS -60..0 线性映射到 0..1）
   double get level => _level;
 
   Future<void> start() async {
-    if (_state != RecordState.stop) return;
+    if (_state != RecordState.stop || _stopping) return;
     if (!await _recorder.hasPermission()) {
       throw const RecorderPermissionException();
     }
@@ -64,12 +105,30 @@ class RecorderService extends ChangeNotifier {
     final encoder = await _recorder.isEncoderSupported(AudioEncoder.wav)
         ? AudioEncoder.wav
         : AudioEncoder.aacLc;
+    if (!kIsWeb && pathResolver == null) {
+      // 先建目录：插件不自建父目录，缺失即静默失败（见 audio_files_io）
+      await ensureRecordingsDir();
+    }
     final path = await _resolvePath(encoder);
     await _recorder.start(
-      RecordConfig(encoder: encoder, sampleRate: 44100, numChannels: 1),
+      RecordConfig(
+        encoder: encoder,
+        sampleRate: 44100,
+        numChannels: 1,
+        // 锁屏后台录音（PLAN 决策 2）：插件内置前台服务 + 常驻通知；
+        // app manifest 需声明 AudioRecordingService 且
+        // foregroundServiceType="microphone"。字段已被上游标弃用
+        // （下个 major 移除），届时迁移外部前台服务方案。
+        androidConfig: AndroidRecordConfig(
+          // ignore: deprecated_member_use
+          service: const AndroidService(title: '面试录音进行中'),
+        ),
+      ),
       path: path,
     );
-    _elapsed = Duration.zero;
+    _clock
+      ..reset()
+      ..start();
     history.clear();
     _level = 0;
     _state = RecordState.record;
@@ -80,6 +139,7 @@ class RecorderService extends ChangeNotifier {
   Future<void> pause() async {
     if (_state != RecordState.record) return;
     await _recorder.pause();
+    _clock.stop();
     _stopTimers();
     _state = RecordState.pause;
     _notify();
@@ -88,21 +148,34 @@ class RecorderService extends ChangeNotifier {
   Future<void> resume() async {
     if (_state != RecordState.pause) return;
     await _recorder.resume();
+    _clock.start();
     _state = RecordState.record;
     _startTimers();
     _notify();
   }
 
-  /// 停止并落盘；待开始状态返回 null。
+  /// 停止并落盘；待开始或已在停止流程返回 null。
+  /// 插件未给出文件路径时抛 [RecorderException]（防止空路径入库）。
   Future<RecordingResult?> stop() async {
-    if (_state == RecordState.stop) return null;
-    final path = await _recorder.stop();
-    _stopTimers();
-    final result = RecordingResult(filePath: path ?? '', duration: _elapsed);
-    _state = RecordState.stop;
-    _level = 0;
+    if (isIdle || _stopping) return null;
+    _stopping = true;
     _notify();
-    return result;
+    String? path;
+    try {
+      path = await _recorder.stop();
+    } finally {
+      // 无论 stop 是否抛出都终结状态机：计时停止、回待开始，可再次开始
+      _clock.stop();
+      _stopTimers();
+      _level = 0;
+      _state = RecordState.stop;
+      _stopping = false;
+      _notify();
+    }
+    if (path == null || path.isEmpty) {
+      throw const RecorderException('录音文件缺失，本次录音未能保存');
+    }
+    return RecordingResult(filePath: path, duration: _clock.elapsed);
   }
 
   Future<String> _resolvePath(AudioEncoder encoder) async {
@@ -116,16 +189,16 @@ class RecorderService extends ChangeNotifier {
 
   void _startTimers() {
     _stopTimers();
-    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
-      _elapsed += const Duration(seconds: 1);
-      _notify();
-    });
+    // 计时权威值来自 Stopwatch，tick 只负责驱动 UI 刷新
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) => _notify());
     _meter = Timer.periodic(const Duration(milliseconds: 150), (_) {
       _pollLevel();
     });
   }
 
   Future<void> _pollLevel() async {
+    if (_meterBusy) return;
+    _meterBusy = true;
     try {
       final amplitude = await _recorder.getAmplitude();
       _level = ((amplitude.current + 60) / 60).clamp(0.0, 1.0);
@@ -134,6 +207,8 @@ class RecorderService extends ChangeNotifier {
       _notify();
     } on Exception {
       // 单次电平读取失败忽略（平台/状态切换瞬间可能发生）
+    } finally {
+      _meterBusy = false;
     }
   }
 
@@ -151,8 +226,22 @@ class RecorderService extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _stateSub?.cancel();
     _stopTimers();
-    _recorder.dispose();
+    _clock.stop();
+    if (_state == RecordState.stop) {
+      _recorder.dispose();
+    } else {
+      // 录音中销毁（App 退出）：先尽力落盘文件头再释放，避免半截文件
+      unawaited(Future(() async {
+        try {
+          await _recorder.stop();
+        } on Exception {
+          // 尽力而为
+        }
+        await _recorder.dispose();
+      }));
+    }
     super.dispose();
   }
 }

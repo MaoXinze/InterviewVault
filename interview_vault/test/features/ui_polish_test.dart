@@ -108,14 +108,19 @@ void main() {
     await drainAppTimers(tester);
   });
 
-  testWidgets('面试弧线删除：菜单触发 → 确认 → 数据真删', (tester) async {
-    final db = await pumpInterviewVaultApp(tester);
+  testWidgets('面试弧线删除：菜单触发 → 确认 → 数据真删（含音频文件清理）', (tester) async {
+    final deletedAudioPaths = <String?>[];
+    final db = await pumpInterviewVaultApp(
+      tester,
+      audioFileCleaner: (path) async => deletedAudioPaths.add(path),
+    );
     addTearDown(db.close);
 
     await db.interviewsDao.insertOne(
       InterviewsCompanion.insert(
         id: 'iv-1',
-        company: Value('字节跳动'),
+        company: const Value('字节跳动'),
+        audioFilePath: const Value('/data/user/0/app/files/recordings/x.wav'),
       ),
     );
     await tester.tap(find.byKey(const Key('tab_interviews')));
@@ -129,6 +134,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(await db.interviewsDao.getById('iv-1'), isNull);
+    // 删除即真删：行删除后同步清理音频文件
+    expect(deletedAudioPaths, ['/data/user/0/app/files/recordings/x.wav']);
     expect(find.text('还没有面试记录'), findsOneWidget);
 
     await drainAppTimers(tester);

@@ -100,15 +100,25 @@ class LlmClient {
       buffer += chunk;
       while (buffer.contains('\n')) {
         final idx = buffer.indexOf('\n');
-        final line = buffer.substring(0, idx).trim();
+        final line = buffer.substring(0, idx);
         buffer = buffer.substring(idx + 1);
-        if (!line.startsWith('data:')) continue;
-        final payload = line.substring(5).trim();
-        if (payload == '[DONE]') return;
-        final text = _extractDeltaText(payload);
-        if (text != null && text.isNotEmpty) yield text;
+        final text = _deltaFromLine(line);
+        if (text != null) yield text;
       }
     }
+    // 流结束：部分服务端最后一行不带换行符，flush 残留的 buffer
+    final text = _deltaFromLine(buffer);
+    if (text != null) yield text;
+  }
+
+  /// 解析一行 SSE，返回增量文本；非 data 行 / 空 payload / [DONE] 返回 null。
+  /// [DONE] 后无需提前终止流：服务端随即断开，残余行为空行或注释。
+  String? _deltaFromLine(String rawLine) {
+    final line = rawLine.trim();
+    if (!line.startsWith('data:')) return null;
+    final payload = line.substring(5).trim();
+    if (payload.isEmpty || payload == '[DONE]') return null;
+    return _extractDeltaText(payload);
   }
 
   String? _extractDeltaText(String jsonPayload) {

@@ -181,4 +181,32 @@ void main() {
 
     expect(chunks, ['你', '好']);
   });
+
+  test('SSE 尾包：最后一行不带换行符也吐出（部分服务端行为）', () async {
+    const sse =
+        'data: {"choices":[{"delta":{"content":"你"}}]}\n\n'
+        'data: {"choices":[{"delta":{"content":"好"}}]}';
+    final adapter = _CapturingAdapter(
+      (options) => ResponseBody.fromBytes(
+        utf8.encode(sse),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['text/event-stream'],
+        },
+      ),
+    );
+    final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com/v1'))
+      ..httpClientAdapter = adapter;
+    final client = LlmClient(endpoint: _endpoint(), apiKey: 'sk-x', dio: dio);
+
+    final chunks = await client
+        .chatCompletionStream(
+          messages: const [
+            {'role': 'user', 'content': '你好'},
+          ],
+        )
+        .toList();
+
+    expect(chunks, ['你', '好']);
+  });
 }

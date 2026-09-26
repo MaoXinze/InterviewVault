@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/database/app_database.dart';
+import '../data/local/audio_files.dart' as audio_files;
 import '../data/secure/key_storage.dart';
 import '../features/api_key/ai_config_service.dart';
 import '../features/recording/recorder_service.dart';
@@ -61,3 +62,9 @@ final recorderServiceProvider = Provider<RecorderService>((ref) {
   ref.onDispose(service.dispose);
   return service;
 });
+
+/// 音频文件清理（删除面试时同步删文件，AGENTS 铁律 3"删除即真删"）。
+/// 函数式注入：测试用记录型桩替换。
+final audioFileCleanerProvider = Provider<Future<void> Function(String?)>(
+  (ref) => audio_files.deleteAudioFile,
+);

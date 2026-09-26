@@ -10,8 +10,23 @@ class AiConfigsDao extends DatabaseAccessor<AppDatabase>
     with _$AiConfigsDaoMixin {
   AiConfigsDao(super.db);
 
-  Future<void> upsert(AiConfigsCompanion entry) =>
-      into(aiConfigs).insert(entry, mode: InsertMode.insertOrReplace);
+  /// 按 id 覆盖式保存；已存在时保留 createdAt（insertOrReplace 会整行
+  /// 替换、把 createdAt 重置为 now，导致"配置创建时间"随每次保存漂移）
+  Future<void> upsert(AiConfigsCompanion entry) async {
+    if (!entry.id.present) {
+      throw ArgumentError('upsert 需要显式 id', 'entry');
+    }
+    final id = entry.id.value;
+    final existing = await (select(aiConfigs)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (existing == null) {
+      await into(aiConfigs).insert(entry);
+    } else {
+      await (update(aiConfigs)..where((t) => t.id.equals(id))).write(
+        entry.copyWith(updatedAt: Value(nowIso())),
+      );
+    }
+  }
 
   Future<void> deleteOne(String id) =>
       (delete(aiConfigs)..where((t) => t.id.equals(id))).go().then((_) {});

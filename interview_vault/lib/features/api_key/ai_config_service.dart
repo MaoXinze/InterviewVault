@@ -148,3 +148,17 @@ class AiConfigService {
     );
   }
 }
+
+/// Base URL 校验：返回错误文案，null 表示合法。
+/// LlmClient 构造时对 baseUrl 做 Uri.parse（非法输入抛 FormatException），
+/// 保存与连接测试前先在此拦截，给出用户可读的提示。
+String? validateBaseUrl(String baseUrl) {
+  if (baseUrl.isEmpty) return '请先填写 Base URL';
+  final uri = Uri.tryParse(baseUrl);
+  if (uri == null ||
+      (uri.scheme != 'http' && uri.scheme != 'https') ||
+      uri.host.isEmpty) {
+    return 'Base URL 无效，示例：https://api.openai.com';
+  }
+  return null;
+}

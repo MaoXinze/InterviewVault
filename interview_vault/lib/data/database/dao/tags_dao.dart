@@ -19,24 +19,29 @@ const systemTagSeeds = <String, String>{
 class TagsDao extends DatabaseAccessor<AppDatabase> with _$TagsDaoMixin {
   TagsDao(super.db);
 
-  /// 建库时种子：按系统标签固定顺序写入，created_at 依次错开以保持排序稳定
-  Future<void> seedSystemTags() async {
+  /// 建库时种子：按系统标签固定顺序写入，created_at 依次错开以保持排序稳定。
+  /// batch 原子执行——中途失败整体回滚，避免"部分种子 + 下次打开因
+  /// tags 非空永不补种"导致系统标签永久缺失。
+  Future<void> seedSystemTags() {
     final base = DateTime.now();
-    var i = 0;
-    for (final entry in systemTagSeeds.entries) {
-      final ts = base.add(Duration(milliseconds: i++)).toIso8601String();
-      await into(tags).insert(
-        TagsCompanion.insert(
-          id: 'tag-${systemTagId(entry.key)}',
-          name: entry.key,
-          isSystem: const Value(true),
-          color: const Value(null),
-          description: Value(entry.value),
-          createdAt: Value(ts),
-          updatedAt: Value(ts),
-        ),
-      );
-    }
+    return batch((b) {
+      var i = 0;
+      systemTagSeeds.forEach((name, description) {
+        final ts = base.add(Duration(milliseconds: i++)).toIso8601String();
+        b.insert(
+          tags,
+          TagsCompanion.insert(
+            id: 'tag-${systemTagId(name)}',
+            name: name,
+            isSystem: const Value(true),
+            color: const Value(null),
+            description: Value(description),
+            createdAt: Value(ts),
+            updatedAt: Value(ts),
+          ),
+        );
+      });
+    });
   }
 
   /// 普通插入：name 唯一约束冲突时抛异常（而不是静默覆盖）

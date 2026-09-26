@@ -28,10 +28,12 @@ class FakeKeyStorage extends Mock implements KeyStorage {
   Future<bool> has(String provider) async => store.containsKey('apikey.$provider');
 }
 
-/// 泵起完整 App（内存数据库 + 桩 KeyStorage），可注入自定义录音服务。
+/// 泵起完整 App（内存数据库 + 桩 KeyStorage），可注入自定义录音服务
+/// 与音频文件清理桩。
 Future<AppDatabase> pumpInterviewVaultApp(
   WidgetTester tester, {
   RecorderService? recorder,
+  Future<void> Function(String?)? audioFileCleaner,
 }) async {
   final db = AppDatabase.forTesting(NativeDatabase.memory());
   await tester.pumpWidget(
@@ -40,6 +42,8 @@ Future<AppDatabase> pumpInterviewVaultApp(
         appDatabaseProvider.overrideWithValue(db),
         keyStorageProvider.overrideWithValue(FakeKeyStorage()),
         if (recorder != null) recorderServiceProvider.overrideWithValue(recorder),
+        if (audioFileCleaner != null)
+          audioFileCleanerProvider.overrideWithValue(audioFileCleaner),
       ],
       child: const InterviewVaultApp(),
     ),

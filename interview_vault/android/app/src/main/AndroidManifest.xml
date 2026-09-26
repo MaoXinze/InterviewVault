@@ -37,6 +37,12 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- record 插件内置前台服务（锁屏后台录音，PLAN 决策 2）：
+             mic 类型 + RECORD_AUDIO while-in-use 权限，录音中锁屏不切断麦克风 -->
+        <service
+            android:name="com.llfbandit.record.service.AudioRecordingService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
