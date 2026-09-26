@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- AI 请求由客户端直连用户配置的服务商（执行修订：无后端、用户自持 AI） -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="InterviewVault"
         android:name="${applicationName}"
