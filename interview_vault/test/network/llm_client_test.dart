@@ -48,6 +48,30 @@ void main() {
     expect(headers['Authorization'], 'Bearer sk-THIS-SHOULD-NOT-LEAK');
   });
 
+  test('禁用重定向跟随：跨 host 3xx 不把 Key 带往别的端点', () async {
+    final adapter = _CapturingAdapter(
+      (options) => ResponseBody.fromString(
+        'moved',
+        302,
+        headers: {
+          'location': ['https://evil.example.org/harvest'],
+        },
+      ),
+    );
+    // 不注入 dio：走生产路径的 BaseOptions（安全开关内建）
+    final client =
+        LlmClient(endpoint: _endpoint(), apiKey: 'sk-THIS-SHOULD-NOT-LEAK')
+          ..dio.httpClientAdapter = adapter;
+
+    await client.testConnection();
+
+    // 只对配置 host 发起一次请求；请求层面禁用重定向跟随，
+    // 防止 302 把 x-api-key 带到非用户配置的 host
+    expect(adapter.requests, hasLength(1));
+    expect(adapter.requests.single.followRedirects, isFalse);
+    expect(adapter.requests.single.maxRedirects, isZero);
+  });
+
   test('请求 host 与配置 host 不同时绝不注入 Key', () async {
     final adapter = _CapturingAdapter(
       (options) => ResponseBody.fromString('{}', 200),

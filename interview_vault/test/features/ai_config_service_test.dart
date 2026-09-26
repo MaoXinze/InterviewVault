@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:interview_vault/data/database/app_database.dart';
@@ -76,4 +78,61 @@ void main() {
     expect(result.success, isFalse);
     expect(result.message, contains('未配置'));
   });
+
+  test('Key 写入失败时，DB 不留下激活配置（先 Key 后 DB）', () async {
+    final throwingStorage = _ThrowingKeyStorage();
+    final throwingService = AiConfigService(db: db, keyStorage: throwingStorage);
+
+    await expectLater(
+      throwingService.saveActiveConfig(
+        provider: 'openai',
+        modelName: 'gpt-4o-mini',
+        baseUrl: 'https://api.openai.com/v1',
+        apiKey: 'sk-WILL-FAIL',
+      ),
+      throwsA(anything),
+    );
+
+    expect(await db.aiConfigsDao.getActive(), isNull);
+    expect(await throwingStorage.has('openai'), isFalse);
+  });
+
+  test('deleteKeyFor 按服务商删 Key；若该配置激活则一并取消激活', () async {
+    await service.saveActiveConfig(
+      provider: 'openai',
+      modelName: 'gpt-4o-mini',
+      baseUrl: 'https://api.openai.com/v1',
+      apiKey: 'sk-OPENAI',
+    );
+    await service.saveActiveConfig(
+      provider: 'deepseek',
+      modelName: 'deepseek-chat',
+      baseUrl: 'https://api.deepseek.com/v1',
+      apiKey: 'sk-DEEPSEEK',
+    );
+
+    // 删除未激活的 openai Key：Key 消失，deepseek 激活不受影响
+    await service.deleteKeyFor('openai');
+    expect(await keyStorage.has('openai'), isFalse);
+    expect((await db.aiConfigsDao.getActive())!.provider, 'deepseek');
+
+    // 删除激活中的 deepseek：Key 消失且无激活配置
+    await service.deleteKeyFor('deepseek');
+    expect(await keyStorage.has('deepseek'), isFalse);
+    expect(await db.aiConfigsDao.getActive(), isNull);
+    expect((await db.aiConfigsDao.getAll()).length, 2);
+  });
+}
+
+/// 模拟 secure storage 平台层写入失败
+class _ThrowingKeyStorage extends Mock implements KeyStorage {
+  @override
+  Future<void> write(String provider, String key) async =>
+      throw const FileSystemException('keystore unavailable');
+
+  @override
+  Future<String?> read(String provider) async => null;
+
+  @override
+  Future<bool> has(String provider) async => false;
 }

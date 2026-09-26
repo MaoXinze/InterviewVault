@@ -23,6 +23,8 @@ class AiConfigService {
     required String baseUrl,
     required String apiKey,
   }) async {
+    // 先写 Key 后落 DB：Key 写失败时不能留下"已激活但无 Key"的配置
+    await keyStorage.write(provider, apiKey);
     final id = 'cfg-$provider';
     await db.aiConfigsDao.upsert(
       AiConfigsCompanion.insert(
@@ -33,7 +35,6 @@ class AiConfigService {
       ),
     );
     await db.aiConfigsDao.setActive(id);
-    await keyStorage.write(provider, apiKey);
   }
 
   Future<AiConfig?> activeConfig() => db.aiConfigsDao.getActive();
@@ -51,6 +52,16 @@ class AiConfigService {
       await keyStorage.delete(config.provider);
     }
     await db.aiConfigsDao.clearActive();
+  }
+
+  /// 按服务商删除 Key（AGENTS 红线：用户可随时删除任意 Key，不留无
+  /// UI 入口的孤儿 Key）；若该服务商配置正激活则一并取消激活。
+  Future<void> deleteKeyFor(String provider) async {
+    await keyStorage.delete(provider);
+    final config = await activeConfig();
+    if (config != null && config.provider == provider) {
+      await db.aiConfigsDao.clearActive();
+    }
   }
 
   /// 表单直连测试（不落盘）：用页面当前填的值发起一次真实请求。

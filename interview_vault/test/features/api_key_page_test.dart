@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -98,5 +99,33 @@ void main() {
       find.byKey(const Key('field_base_url')),
     );
     expect(field.controller!.text, isEmpty);
+  });
+
+  testWidgets('切换服务商后按新服务商的实际存储状态显示（防孤儿 Key）', (tester) async {
+    // 预存 OpenAI 的 Key 并设为激活配置
+    keyStorage.store['apikey.openai'] = 'sk-OPENAI';
+    await db.aiConfigsDao.upsert(
+      AiConfigsCompanion.insert(
+        id: 'cfg-openai',
+        provider: 'openai',
+        modelName: Value('gpt-4o-mini'),
+        baseUrl: Value('https://api.openai.com/v1'),
+      ),
+    );
+    await db.aiConfigsDao.setActive('cfg-openai');
+    await pumpPage(tester);
+
+    // 初始：OpenAI 有 Key → 显示"已保存"与删除入口
+    expect(find.textContaining('已保存'), findsOneWidget);
+    expect(find.text('删除 Key'), findsOneWidget);
+
+    // 切到 DeepSeek（无 Key）→ 不得显示"已保存"，也不出现删除入口
+    await tester.tap(find.text('OpenAI'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('DeepSeek').last);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('已保存'), findsNothing);
+    expect(find.text('删除 Key'), findsNothing);
   });
 }

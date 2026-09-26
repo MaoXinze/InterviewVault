@@ -18,6 +18,11 @@ class LlmClient {
               baseUrl: endpoint.baseUrl,
               connectTimeout: const Duration(seconds: 15),
               receiveTimeout: const Duration(seconds: 60),
+              // 安全红线：302 重定向可能把 x-api-key 带到非用户配置的 host
+              //（dart:io 会剥离 Authorization，但不剥离 x-api-key）。
+              // LLM API 无合法重定向场景，直接禁用跟随。
+              followRedirects: false,
+              maxRedirects: 0,
             )) {
     _dio.interceptors.addAll([
       EndpointAuthInterceptor(

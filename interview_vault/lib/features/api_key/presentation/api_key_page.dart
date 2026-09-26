@@ -24,7 +24,9 @@ class _ApiKeyPageState extends ConsumerState<ApiKeyPage> {
   bool _testing = false;
   String? _testMessage;
   bool _testOk = false;
-  bool _hasStoredKey = false;
+  /// 当前选中服务商在 secure storage 中是否已有 Key（按 provider 判定，
+  /// 防止切换服务商后误用旧状态形成"孤儿 Key"）
+  bool _currentProviderHasKey = false;
 
   @override
   void initState() {
@@ -39,16 +41,22 @@ class _ApiKeyPageState extends ConsumerState<ApiKeyPage> {
   Future<void> _loadExisting() async {
     final service = ref.read(aiConfigServiceProvider);
     final config = await service.activeConfig();
-    if (config == null || !mounted) return;
-    final hasKey = await ref.read(keyStorageProvider).has(config.provider);
     if (!mounted) return;
-    setState(() {
-      _providerId = config.provider;
+    if (config != null) {
       final preset = providerById(config.provider);
-      _model.text = config.modelName ?? preset.defaultModel;
-      _baseUrl.text = config.baseUrl ?? preset.baseUrl;
-      _hasStoredKey = hasKey;
-    });
+      setState(() {
+        _providerId = config.provider;
+        _model.text = config.modelName ?? preset.defaultModel;
+        _baseUrl.text = config.baseUrl ?? preset.baseUrl;
+      });
+    }
+    await _refreshKeyState();
+  }
+
+  Future<void> _refreshKeyState() async {
+    final hasKey = await ref.read(keyStorageProvider).has(_providerId);
+    if (!mounted) return;
+    setState(() => _currentProviderHasKey = hasKey);
   }
 
   @override
@@ -59,7 +67,7 @@ class _ApiKeyPageState extends ConsumerState<ApiKeyPage> {
     super.dispose();
   }
 
-  void _onProviderChanged(String? id) {
+  Future<void> _onProviderChanged(String? id) async {
     if (id == null || id == _providerId) return;
     final preset = providerById(id);
     setState(() {
@@ -68,18 +76,19 @@ class _ApiKeyPageState extends ConsumerState<ApiKeyPage> {
       _baseUrl.text = preset.baseUrl;
       _testMessage = null;
     });
+    await _refreshKeyState();
   }
 
   Future<void> _save() async {
     final apiKey = _key.text.trim();
-    if (apiKey.isEmpty && !_hasStoredKey) {
+    if (apiKey.isEmpty && !_currentProviderHasKey) {
       _showSnack('请先填写 API Key');
       return;
     }
     setState(() => _saving = true);
     try {
       final service = ref.read(aiConfigServiceProvider);
-      if (apiKey.isNotEmpty || !_hasStoredKey) {
+      if (apiKey.isNotEmpty) {
         await service.saveActiveConfig(
           provider: _providerId,
           modelName: _model.text.trim(),
@@ -88,7 +97,7 @@ class _ApiKeyPageState extends ConsumerState<ApiKeyPage> {
         );
         _key.clear();
       } else {
-        // 已有 Key 且输入框为空：仅更新模型/BaseURL 等非敏感配置
+        // 当前服务商已有 Key 且输入框为空：仅更新模型/BaseURL 等非敏感配置
         await service.updateActiveMeta(
           provider: _providerId,
           modelName: _model.text.trim(),
@@ -96,8 +105,12 @@ class _ApiKeyPageState extends ConsumerState<ApiKeyPage> {
         );
       }
       if (!mounted) return;
-      setState(() => _hasStoredKey = true);
+      setState(() => _currentProviderHasKey = true);
       _showSnack('已保存（Key 仅存于本机安全存储）');
+    } on Exception {
+      if (!mounted) return;
+      // 不透出异常细节，避免任何携带 Key 的平台层消息进入 UI
+      _showSnack('保存失败，请重试');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -130,12 +143,13 @@ class _ApiKeyPageState extends ConsumerState<ApiKeyPage> {
   }
 
   Future<void> _deleteKey() async {
-    await ref.read(aiConfigServiceProvider).deleteActive();
+    await ref.read(aiConfigServiceProvider).deleteKeyFor(_providerId);
     if (!mounted) return;
     setState(() {
-      _hasStoredKey = false;
       _testMessage = null;
     });
+    await _refreshKeyState();
+    if (!mounted) return;
     _showSnack('已删除 API Key');
   }
 
@@ -174,7 +188,7 @@ class _ApiKeyPageState extends ConsumerState<ApiKeyPage> {
             enableSuggestions: false,
             decoration: InputDecoration(
               labelText: 'API Key',
-              helperText: _hasStoredKey ? '已保存 Key（重填可覆盖）' : '仅保存在本机安全存储',
+              helperText: _currentProviderHasKey ? '已保存 Key（重填可覆盖）' : '仅保存在本机安全存储',
               border: const OutlineInputBorder(),
             ),
           ),
@@ -212,7 +226,7 @@ class _ApiKeyPageState extends ConsumerState<ApiKeyPage> {
                 child: Text(_saving ? '保存中…' : '保存'),
               ),
               const Spacer(),
-              if (_hasStoredKey)
+              if (_currentProviderHasKey)
                 TextButton(
                   onPressed: _deleteKey,
                   child: const Text('删除 Key'),
