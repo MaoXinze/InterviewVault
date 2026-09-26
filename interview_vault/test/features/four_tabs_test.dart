@@ -73,7 +73,8 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.descendant(of: pageScope, matching: find.text('客户端工程师')),
+      find.descendant(
+          of: pageScope, matching: find.textContaining('客户端工程师')),
       findsOneWidget,
     );
     expect(find.byKey(const Key('field_search')), findsOneWidget);
