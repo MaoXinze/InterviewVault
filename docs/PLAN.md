@@ -26,7 +26,7 @@
 | 录音 | record | 振幅流喂波形、暂停/继续 |
 | 播放 | just_audio + audio_session | 精确 seek（标注跳转）、变速 |
 | 本地转写 | whisper.cpp + dart:ffi（ffigen 绑定）+ Native Assets（hook/build.dart） | Isolate 执行不阻塞 UI |
-| 音频解码 | ffmpeg_kit_flutter | 任意导入格式 → 16kHz 单声道 PCM |
+| 音频解码 | FFmpegKit 社区维护 fork | 原版 ffmpeg_kit_flutter 已于 2025-01 退役（二进制下架）；W2 从 pub.dev 选维护中的 fork（如 ffmpeg_kit_flutter_new / 支持 16KB page-size 的 fork），功能不变：任意导入格式 → 16kHz 单声道 PCM |
 | 网络 | dio + SSE 流式 | Key 仅注入用户配置的 baseUrl |
 | 路由/模型 | go_router + freezed + json_serializable | 声明式路由、不可变数据类 |
 | 导入/导出 | file_picker + path_provider + share_plus | 音频/简历导入；Markdown/JSON 导出分享 |
@@ -99,7 +99,7 @@ lib/
 
 - **whisper.cpp FFI 是最大技术风险**：ffigen/Native Assets 踩坑时备选社区包 whisper_flutter_new 或 sherpa-onnx（中文流式更优）
 - 模型体积：base 约 142MB（iOS 蜂窝限制内）、small 约 466MB（提示 WiFi）；whisper.cpp 静态库每 ABI +10-20MB
-- ffmpeg_kit 包体 +25MB/ABI，接受
+- 原版 FFmpegKit 已退役（2025-01，arthenica 归档、二进制下架）：W2 必须用社区维护 fork，安装前在 pub.dev 确认最近更新时间与 Android 16KB page-size 支持；包体 +25MB/ABI，接受
 - 国内安卓无 GMS：全栈不依赖 Google 服务组件
 - CPU 转写速度预期：base 模型约 5-10 倍实时率（1 小时录音 6-12 分钟出稿）
 
