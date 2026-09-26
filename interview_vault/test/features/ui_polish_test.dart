@@ -7,6 +7,48 @@ import '../helpers/pump_app.dart';
 
 /// W1.5 UI 打磨的动效与交互回归测试。
 void main() {
+  testWidgets('回顾空库：无 CTA、无筛选 chips，展示引导空状态', (tester) async {
+    final db = await pumpInterviewVaultApp(tester);
+    addTearDown(db.close);
+
+    await tester.tap(find.byKey(const Key('tab_review')));
+    await tester.pumpAndSettle();
+
+    // "全部"绝不孤悬：空库时筛选器与 CTA 都不出现
+    expect(find.byKey(const Key('tag_chip_全部')), findsNothing);
+    expect(find.text('开始回顾'), findsNothing);
+    // 空状态有设计：标题 + 流程引导
+    expect(find.text('题库还是空的'), findsOneWidget);
+    expect(find.textContaining('自动生成卡片'), findsOneWidget);
+
+    await drainAppTimers(tester);
+  });
+
+  testWidgets('回顾有数据：CTA 与筛选 chips 出现', (tester) async {
+    final db = await pumpInterviewVaultApp(tester);
+    addTearDown(db.close);
+
+    await db.interviewsDao.insertOne(
+      InterviewsCompanion.insert(id: 'iv-root'),
+    );
+    await db.flashcardsDao.insertOne(
+      FlashcardsCompanion.insert(
+        id: 'fc-1',
+        interviewId: 'iv-root',
+        question: '什么是洋葱模型？',
+        tags: Value(encodeCardTags(['亮点'])),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('tab_review')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('开始回顾'), findsOneWidget);
+    expect(find.byKey(const Key('tag_chip_全部')), findsOneWidget);
+    expect(find.byKey(const Key('tag_chip_亮点')), findsOneWidget);
+
+    await drainAppTimers(tester);
+  });
+
   testWidgets('主题圆形扩散：切换后开关翻转、遮罩移除', (tester) async {
     final db = await pumpInterviewVaultApp(tester);
     addTearDown(db.close);
