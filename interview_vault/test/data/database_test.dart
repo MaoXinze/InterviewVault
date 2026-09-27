@@ -299,6 +299,26 @@ void main() {
       final row = (await db.flashcardsDao.getByInterview(id)).single;
       expect(decodeCardTags(row.tags), ['亮点', '计算机网络']);
     });
+
+    test('watchByInterview 按 sourceStartTime 升序、null 殿后（总结页时间轴序）',
+        () async {
+      final id = await insertInterview();
+      Future<void> card(String cardId, {double? start}) =>
+          db.flashcardsDao.insertOne(
+            FlashcardsCompanion.insert(
+              id: cardId,
+              interviewId: id,
+              question: 'Q-$cardId',
+              sourceStartTime: Value(start),
+            ),
+          );
+      await card('fc-null');
+      await card('fc-b', start: 10);
+      await card('fc-a', start: 0);
+
+      final rows = await db.flashcardsDao.watchByInterview(id).first;
+      expect(rows.map((r) => r.id).toList(), ['fc-a', 'fc-b', 'fc-null']);
+    });
   });
 
   group('ai_configs', () {

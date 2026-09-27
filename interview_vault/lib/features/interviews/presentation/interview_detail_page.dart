@@ -30,7 +30,20 @@ class InterviewDetailPage extends ConsumerWidget {
 
     return Scaffold(
       key: const Key('page_interview_detail'),
-      appBar: AppBar(title: Text(_title(interview))),
+      appBar: AppBar(
+        title: Text(_title(interview)),
+        // 草稿没有可总结的内容（卡片/标注都来自转写后的逐字稿）
+        actions: [
+          if (interview != null && interview.status != 'draft')
+            IconButton(
+              key: const Key('btn_open_summary'),
+              tooltip: '面试总结',
+              icon: const Icon(Icons.summarize_outlined),
+              onPressed: () =>
+                  context.push('/interviews/$interviewId/summary'),
+            ),
+        ],
+      ),
       body: interview == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(

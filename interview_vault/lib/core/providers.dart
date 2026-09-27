@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../data/database/app_database.dart';
 import '../data/local/audio_files.dart' as audio_files;
 import '../data/secure/key_storage.dart';
 import '../features/api_key/ai_config_service.dart';
+import '../features/export/markdown_export_service.dart';
 import '../features/flashcards/flashcard_service.dart';
 import '../features/import/audio_import_service.dart';
 import '../features/interviews/audio_playback.dart';
@@ -174,3 +176,26 @@ final cardByIdProvider =
   final db = ref.watch(appDatabaseProvider);
   return db.flashcardsDao.watchById(id);
 });
+
+/// 单场面试卡片流（W4-M1 总结页：时间轴序，与导出一致）。
+final flashcardsByInterviewProvider =
+    StreamProvider.family<List<Flashcard>, String>((ref, id) {
+  final db = ref.watch(appDatabaseProvider);
+  return db.flashcardsDao.watchByInterview(id);
+});
+
+/// Markdown 复盘导出（W4-M1：拼模板 + 落盘 exports/ + 状态推进）。
+final markdownExportServiceProvider = Provider<MarkdownExportService>((ref) {
+  return MarkdownExportService(db: ref.watch(appDatabaseProvider));
+});
+
+/// 导出后的系统分享入口（share_plus），函数式注入便于测试替换。
+Future<void> defaultShareMarkdown(String path) async {
+  await SharePlus.instance.share(
+    ShareParams(files: [XFile(path)], subject: '面试复盘'),
+  );
+}
+
+final markdownSharerProvider = Provider<Future<void> Function(String path)>(
+  (ref) => defaultShareMarkdown,
+);

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:interview_vault/core/providers.dart';
+import 'package:interview_vault/features/export/markdown_export_service.dart';
 import 'package:interview_vault/features/import/audio_import_service.dart';
 import 'package:interview_vault/features/recording/recorder_service.dart';
 import 'package:interview_vault/data/database/app_database.dart';
@@ -30,12 +31,15 @@ class FakeKeyStorage extends Mock implements KeyStorage {
 }
 
 /// 泵起完整 App（内存数据库 + 桩 KeyStorage），可注入自定义录音服务、
-/// 音频文件清理桩、导入服务与外部持有的 FakeKeyStorage（测试内预置 Key）。
+/// 音频文件清理桩、导入服务、Markdown 导出服务/分享桩与外部持有的
+/// FakeKeyStorage（测试内预置 Key）。
 Future<AppDatabase> pumpInterviewVaultApp(
   WidgetTester tester, {
   RecorderService? recorder,
   Future<void> Function(String?)? audioFileCleaner,
   AudioImportService? audioImportService,
+  MarkdownExportService? markdownExportService,
+  Future<void> Function(String path)? markdownSharer,
   FakeKeyStorage? keyStorage,
 }) async {
   final db = AppDatabase.forTesting(NativeDatabase.memory());
@@ -50,6 +54,11 @@ Future<AppDatabase> pumpInterviewVaultApp(
           audioFileCleanerProvider.overrideWithValue(audioFileCleaner),
         if (audioImportService != null)
           audioImportServiceProvider.overrideWithValue(audioImportService),
+        if (markdownExportService != null)
+          markdownExportServiceProvider
+              .overrideWithValue(markdownExportService),
+        if (markdownSharer != null)
+          markdownSharerProvider.overrideWithValue(markdownSharer),
       ],
       child: const InterviewVaultApp(),
     ),

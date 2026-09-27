@@ -68,6 +68,7 @@ dependencies:
   # 模型文件不用它的自动下载（无进度回调、缓存位置不可控），自管下载后传 modelPath。
   whisper_ggml: ^2.6.0
   syncfusion_flutter_pdf: ^34.2.9
+  share_plus: ^13.3.0
 
 dev_dependencies:
   flutter_test:

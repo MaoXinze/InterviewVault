@@ -48,6 +48,20 @@ class FlashcardsDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// 单场面试卡片流（总结页）：按来源时间轴升序，无来源时间（模拟面试
+  /// 直接生成的卡片）殿后，与 Markdown 导出的卡片排序保持一致。
+  /// SQLite 的 ASC 把 NULL 排最前，先按 isNull 布尔序翻转。
+  Stream<List<Flashcard>> watchByInterview(String interviewId) {
+    return (select(flashcards)
+          ..where((t) => t.interviewId.equals(interviewId))
+          ..orderBy([
+            (t) => OrderingTerm.asc(t.sourceStartTime.isNull()),
+            (t) => OrderingTerm.asc(t.sourceStartTime),
+            (t) => OrderingTerm.asc(t.createdAt),
+          ]))
+        .watch();
+  }
+
   Future<int> countAll() async {
     final row = await customSelect('SELECT COUNT(*) AS c FROM flashcards')
         .getSingle();
