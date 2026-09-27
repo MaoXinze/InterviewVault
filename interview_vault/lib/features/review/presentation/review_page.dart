@@ -7,6 +7,7 @@ import '../../../core/providers.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/motion.dart';
 import '../../../data/database/app_database.dart';
+import 'flashcard_flip_page.dart';
 
 /// 回顾 Tab：问题卡片库 + 标签筛选（模式⑩）。
 ///
@@ -76,10 +77,16 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        onPressed: () =>
+                        onPressed: () {
+                          // 当前筛选下的卡片进翻卡；筛选空态给提示
+                          if (filtered.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('翻卡模式将在 W3 提供')),
-                        ),
+                              const SnackBar(content: Text('当前筛选下没有卡片')),
+                            );
+                            return;
+                          }
+                          FlashcardFlipPage.push(context, filtered);
+                        },
                         icon: const Icon(Icons.style),
                         label: const Text('开始回顾'),
                       ),

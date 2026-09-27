@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../data/database/app_database.dart';
 import '../features/flashcards/presentation/flashcard_detail_page.dart';
 import '../features/home/presentation/home_page.dart';
 import '../features/api_key/presentation/api_key_page.dart';
@@ -8,6 +9,7 @@ import '../features/import/presentation/import_page.dart';
 import '../features/interviews/presentation/interview_detail_page.dart';
 import '../features/interviews/presentation/interviews_page.dart';
 import '../features/recording/presentation/recording_page.dart';
+import '../features/review/presentation/flashcard_flip_page.dart';
 import '../features/review/presentation/review_page.dart';
 import '../features/settings/presentation/privacy_page.dart';
 import '../features/settings/presentation/settings_page.dart';
@@ -80,6 +82,15 @@ final appRouter = GoRouter(
       builder: (context, state) => FlashcardDetailPage(
         cardId: state.pathParameters['id']!,
       ),
+    ),
+    GoRoute(
+      path: '/review/flip',
+      builder: (context, state) {
+        final cards = state.extra;
+        return FlashcardFlipPage(
+          cards: cards is List<Flashcard> ? cards : const <Flashcard>[],
+        );
+      },
     ),
     GoRoute(
       path: '/models',
