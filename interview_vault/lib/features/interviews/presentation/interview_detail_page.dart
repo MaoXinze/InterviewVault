@@ -12,10 +12,13 @@ import '../../../core/widgets/motion.dart';
 import '../../../data/database/app_database.dart';
 import '../../transcription/transcription_service.dart';
 import '../../transcription/whisper_model_manager.dart';
+import '../annotation_tags.dart';
+import 'annotation_editor_sheet.dart';
+import 'mini_player.dart';
 
-/// 面试详情 = 逐字稿页（W2-M3）：
+/// 面试详情 = 逐字稿页（W2-M3 / W3-M1）：
 /// draft → 转写卡片（模型状态/下载入口/开始转写/进度）
-/// transcribed → 分段列表（时间戳 + 编辑校正 + 手动说话人标记）
+/// transcribed → 迷你播放条 + 分段列表（时间戳 + 编辑校正 + 说话人标记 + 标注）
 class InterviewDetailPage extends ConsumerWidget {
   const InterviewDetailPage({super.key, required this.interviewId});
 
@@ -34,11 +37,18 @@ class InterviewDetailPage extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               children: [
                 _HeaderCard(interview: interview),
+                if (interview.audioFilePath?.isNotEmpty == true) ...[
+                  const SizedBox(height: 12),
+                  MiniAudioPlayer(audioPath: interview.audioFilePath!),
+                ],
                 const SizedBox(height: 16),
                 if (interview.status == 'draft')
                   _TranscribeCard(interview: interview)
                 else
-                  _TranscriptSection(interviewId: interviewId),
+                  _TranscriptSection(
+                    interviewId: interviewId,
+                    audioFilePath: interview.audioFilePath,
+                  ),
               ],
             ),
     );
@@ -326,21 +336,45 @@ class _TranscribeCardState extends ConsumerState<_TranscribeCard> {
   }
 }
 
-/// 逐字稿：分段列表 + 文本编辑校正 + 手动说话人标记（PRD 2.4/2.5）
+/// 逐字稿：分段列表 + 文本编辑校正 + 说话人标记 + 标注/筛选/跳播放（PRD 2.4/2.5）
 class _TranscriptSection extends ConsumerStatefulWidget {
-  const _TranscriptSection({required this.interviewId});
+  const _TranscriptSection({
+    required this.interviewId,
+    required this.audioFilePath,
+  });
 
   final String interviewId;
+  final String? audioFilePath;
 
   @override
   ConsumerState<_TranscriptSection> createState() => _TranscriptSectionState();
 }
 
 class _TranscriptSectionState extends ConsumerState<_TranscriptSection> {
+  /// 当前筛选的标签键；null = 全部
+  String? _filterKey;
+
   @override
   Widget build(BuildContext context) {
     final segments =
         ref.watch(segmentsByInterviewProvider(widget.interviewId)).value ?? [];
+    final annotations =
+        ref.watch(annotationsByInterviewProvider(widget.interviewId)).value ??
+            const <Annotation>[];
+
+    final bySegment = <String, List<Annotation>>{};
+    for (final annotation in annotations) {
+      final segmentId = annotation.segmentId;
+      if (segmentId == null) continue;
+      bySegment.putIfAbsent(segmentId, () => []).add(annotation);
+    }
+    final visibleSegments = _filterKey == null
+        ? segments
+        : segments
+            .where((s) =>
+                (bySegment[s.id] ?? const <Annotation>[])
+                    .any((a) => annotationFilterKey(a) == _filterKey))
+            .toList();
 
     return Card(
       child: Padding(
@@ -362,13 +396,18 @@ class _TranscriptSectionState extends ConsumerState<_TranscriptSection> {
                 ),
                 const Spacer(),
                 Text(
-                  '点分段改文字 · 点右侧标记说话人',
+                  '点分段改文字 · 点标签跳播放 · 长按标签编辑',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                 ),
               ],
             ),
+            if (annotations.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _buildFilterChips(annotations),
+            ],
+            const SizedBox(height: 4),
             if (segments.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
@@ -384,19 +423,92 @@ class _TranscriptSectionState extends ConsumerState<_TranscriptSection> {
                   ),
                 ),
               )
+            else if (visibleSegments.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text(
+                    '该标签下暂无分段',
+                    key: const Key('filter_empty_hint'),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ),
+              )
             else
-              for (final segment in segments)
+              for (final segment in visibleSegments)
                 _SegmentTile(
                   key: Key('segment_${segment.id}'),
                   segment: segment,
+                  annotations: bySegment[segment.id] ?? const <Annotation>[],
                   onEdit: () => _editSegment(segment),
                   onCycleSpeaker: () => _cycleSpeaker(segment),
+                  onAnnotate: () => _annotate(segment),
+                  onJumpToAnnotation: () => _jumpToSegment(segment),
                 ),
             const SizedBox(height: 8),
           ],
         ),
       ),
     );
+  }
+
+  /// 标注筛选条（PRD 2.5：快速定位所有"失误"/"待改进"）
+  Widget _buildFilterChips(List<Annotation> annotations) {
+    final keys = sortedFilterKeys(annotations);
+    return Wrap(
+      key: const Key('annotation_filters'),
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        TagChip(
+          key: const Key('filter_chip_all'),
+          label: '全部',
+          filterKey: 'all',
+          selected: _filterKey == null,
+          onTap: () => setState(() => _filterKey = null),
+        ),
+        for (final key in keys)
+          TagChip(
+            key: Key('filter_chip_$key'),
+            label: filterKeyLabel(key),
+            filterKey: key,
+            selected: _filterKey == key,
+            onTap: () => setState(() => _filterKey = key),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _annotate(TranscriptSegment segment) {
+    return showAnnotationEditorSheet(
+      context,
+      interviewId: widget.interviewId,
+      segmentId: segment.id,
+    );
+  }
+
+  /// 点击标注 chip：播放器跳转到分段起点并继续播放（PRD 2.5 标注跳转）
+  Future<void> _jumpToSegment(TranscriptSegment segment) async {
+    final path = widget.audioFilePath;
+    if (path == null || path.isEmpty) return;
+    final player = ref.read(audioPlaybackProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await player.open(path);
+      await player.seekTo(
+        Duration(milliseconds: (segment.startTime * 1000).round()),
+      );
+      if (!player.current.playing) await player.toggle();
+    } on Exception {
+      messenger.showSnackBar(const SnackBar(
+        content: Text('音频无法播放：录音文件可能已被移动或删除'),
+      ));
+    }
   }
 
   Future<void> _editSegment(TranscriptSegment segment) async {
@@ -456,13 +568,19 @@ class _SegmentTile extends StatelessWidget {
   const _SegmentTile({
     super.key,
     required this.segment,
+    required this.annotations,
     required this.onEdit,
     required this.onCycleSpeaker,
+    required this.onAnnotate,
+    required this.onJumpToAnnotation,
   });
 
   final TranscriptSegment segment;
+  final List<Annotation> annotations;
   final VoidCallback onEdit;
   final VoidCallback onCycleSpeaker;
+  final VoidCallback onAnnotate;
+  final VoidCallback onJumpToAnnotation;
 
   @override
   Widget build(BuildContext context) {
@@ -473,31 +591,78 @@ class _SegmentTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              width: 92,
-              child: Text(
-                _tsLabel(segment.startTime),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 92,
+                  child: Text(
+                    _tsLabel(segment.startTime),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    segment.content,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  key: Key('btn_annotate_${segment.id}'),
+                  icon: Icon(
+                    Icons.sell_outlined,
+                    size: 18,
+                    color: annotations.isEmpty
+                        ? colorScheme.onSurfaceVariant
+                        : AppTheme.gold,
+                  ),
+                  tooltip: '添加标注',
+                  constraints:
+                      const BoxConstraints(minWidth: 32, minHeight: 32),
+                  padding: EdgeInsets.zero,
+                  onPressed: onAnnotate,
+                ),
+                const SizedBox(width: 4),
+                _SpeakerChip(
+                  key: Key('speaker_chip_${segment.id}'),
+                  speaker: segment.speaker,
+                  onTap: onCycleSpeaker,
+                ),
+              ],
+            ),
+            if (annotations.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(left: 92, top: 4),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final annotation in annotations)
+                      TagChip(
+                        key: Key('annotation_chip_${annotation.id}'),
+                        label: annotation.note == null
+                            ? annotationLabel(annotation)
+                            : '${annotationLabel(annotation)} · ✎',
+                        filterKey: annotationFilterKey(annotation),
+                        selected: false,
+                        onTap: onJumpToAnnotation,
+                        onLongPress: () => showAnnotationEditorSheet(
+                          context,
+                          interviewId: segment.interviewId,
+                          segmentId: segment.id,
+                          existing: annotation,
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            Expanded(
-              child: Text(
-                segment.content,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-            const SizedBox(width: 8),
-            _SpeakerChip(
-              key: Key('speaker_chip_${segment.id}'),
-              speaker: segment.speaker,
-              onTap: onCycleSpeaker,
-            ),
           ],
         ),
       ),

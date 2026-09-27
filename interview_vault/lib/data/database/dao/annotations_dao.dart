@@ -33,6 +33,17 @@ class AnnotationsDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  /// 单场面试标注流（详情页标注 chips 与筛选实时刷新）
+  Stream<List<Annotation>> watchByInterview(String interviewId) {
+    return (select(annotations)
+          ..where((t) => t.interviewId.equals(interviewId))
+          ..orderBy([
+            (t) => OrderingTerm.asc(t.createdAt),
+            (t) => OrderingTerm.asc(t.id),
+          ]))
+        .watch();
+  }
+
   /// 按标签筛选（全局，跨面试）——快速定位所有"失误"/"待改进"
   Future<List<Annotation>> filterByTag(String tag, {String? customTagName}) {
     return (select(annotations)

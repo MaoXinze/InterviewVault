@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:interview_vault/core/providers.dart';
 import 'package:interview_vault/data/database/app_database.dart';
+import 'package:interview_vault/features/interviews/audio_playback.dart';
 import 'package:interview_vault/features/interviews/presentation/interview_detail_page.dart';
 import 'package:interview_vault/features/transcription/transcription_service.dart';
 import 'package:interview_vault/features/transcription/whisper_model_manager.dart';
@@ -66,6 +67,57 @@ class FakeModelGateway implements WhisperModelGateway {
   int? percentOf(TranscribeModel model) => null;
 }
 
+/// 回放桩：记录 open/toggle/seek 调用；states 非广播流会缓存先发的事件，
+/// StreamProvider 订阅时立即拿到初值。
+class FakeAudioPlayback implements AudioPlayback {
+  final _controller = StreamController<AudioPlaybackSnapshot>();
+  @override
+  AudioPlaybackSnapshot current = const AudioPlaybackSnapshot(
+    playing: false,
+    position: Duration.zero,
+    duration: null,
+  );
+
+  int openCalls = 0;
+  int toggleCalls = 0;
+  String? lastPath;
+  final List<Duration> seeks = [];
+
+  @override
+  Stream<AudioPlaybackSnapshot> get states => _controller.stream;
+
+  void _emit() {
+    _controller.add(current);
+  }
+
+  @override
+  Future<void> open(String path) async {
+    openCalls++;
+    lastPath = path;
+  }
+
+  @override
+  Future<void> toggle() async {
+    toggleCalls++;
+    current = AudioPlaybackSnapshot(
+      playing: !current.playing,
+      position: current.position,
+      duration: current.duration,
+    );
+    _emit();
+  }
+
+  @override
+  Future<void> seekTo(Duration position) async {
+    seeks.add(position);
+  }
+
+  @override
+  Future<void> dispose() async {
+    await _controller.close();
+  }
+}
+
 void main() {
   late AppDatabase db;
   late FakeTranscriptionRunner runner;
@@ -111,13 +163,17 @@ void main() {
     );
   }
 
-  Future<void> pumpDetail(WidgetTester tester) async {
+  Future<void> pumpDetail(
+    WidgetTester tester, {
+    AudioPlayback? player,
+  }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           appDatabaseProvider.overrideWithValue(db),
           transcriptionServiceProvider.overrideWithValue(runner),
           whisperModelGatewayProvider.overrideWithValue(gateway),
+          if (player != null) audioPlaybackProvider.overrideWithValue(player),
         ],
         child: const MaterialApp(
           home: InterviewDetailPage(interviewId: 'iv-1'),
@@ -241,6 +297,292 @@ void main() {
       expect(row.content, '请介绍一下你最有挑战的项目经历');
       // 数据库更新后 watch 流刷新 UI
       expect(find.text('请介绍一下你最有挑战的项目经历'), findsOneWidget);
+      await drainAppTimers(tester);
+    });
+  });
+
+  group('W3-M1 标注与播放', () {
+    late FakeAudioPlayback player;
+
+    setUp(() {
+      player = FakeAudioPlayback();
+    });
+
+    Future<void> pumpTranscribed(WidgetTester tester) async {
+      await insertInterview(status: 'transcribed');
+      await insertSegments('iv-1');
+      await pumpDetail(tester, player: player);
+    }
+
+    Future<void> addAnnotation(
+      WidgetTester tester, {
+      required String segmentId,
+      required String tag,
+      String? note,
+      String? customTagName,
+    }) async {
+      await db.annotationsDao.insertOne(
+        AnnotationsCompanion.insert(
+          id: 'an-$segmentId-$tag',
+          interviewId: 'iv-1',
+          segmentId: Value(segmentId),
+          tag: tag,
+          customTagName: customTagName == null ? const Value(null) : Value(customTagName),
+          note: note == null ? const Value(null) : Value(note),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('标注弹层：系统标签按固定顺序展示', (tester) async {
+      await pumpTranscribed(tester);
+      await tester.tap(find.byKey(const Key('btn_annotate_seg-1')));
+      await tester.pumpAndSettle();
+
+      // 弹层出现，5 个系统标签 + 新建入口
+      expect(find.byKey(const Key('annotation_sheet')), findsOneWidget);
+      for (final key in [
+        'tag_chip_question',
+        'tag_chip_answer',
+        'tag_chip_highlight',
+        'tag_chip_mistake',
+        'tag_chip_improvement',
+      ]) {
+        expect(find.byKey(Key(key)), findsOneWidget);
+      }
+      expect(find.byKey(const Key('btn_new_tag')), findsOneWidget);
+      // 未选标签时保存不可用
+      expect(
+        tester.widget<FilledButton>(
+          find.byKey(const Key('btn_annotation_save')),
+        ).onPressed,
+        isNull,
+      );
+      await drainAppTimers(tester);
+    });
+
+    testWidgets('选系统标签保存：标注入库，状态翻转 annotated，chip 出现', (tester) async {
+      await pumpTranscribed(tester);
+      await tester.tap(find.byKey(const Key('btn_annotate_seg-1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('tag_chip_highlight')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('btn_annotation_save')));
+      await tester.pumpAndSettle();
+
+      final rows = await db.annotationsDao.getByInterview('iv-1');
+      expect(rows, hasLength(1));
+      expect(rows.single.tag, 'highlight');
+      expect(rows.single.segmentId, 'seg-1');
+      expect(rows.single.note, isNull);
+      final interview = await db.interviewsDao.getById('iv-1');
+      expect(interview!.status, 'annotated');
+      expect(
+        find.byKey(Key('annotation_chip_${rows.single.id}')),
+        findsOneWidget,
+      );
+      await drainAppTimers(tester);
+    });
+
+    testWidgets('笔记随标注保存，chip 显示笔记标记', (tester) async {
+      await pumpTranscribed(tester);
+      await tester.tap(find.byKey(const Key('btn_annotate_seg-2')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('tag_chip_mistake')));
+      await tester.enterText(
+        find.byKey(const Key('annotation_note_field')),
+        '架构题答浅了，下次先讲权衡',
+      );
+      await tester.tap(find.byKey(const Key('btn_annotation_save')));
+      await tester.pumpAndSettle();
+
+      final rows = await db.annotationsDao.getByInterview('iv-1');
+      expect(rows.single.note, '架构题答浅了，下次先讲权衡');
+      expect(find.textContaining('失误 · ✎'), findsOneWidget);
+      await drainAppTimers(tester);
+    });
+
+    testWidgets('点标注 chip：打开音频 + seek 到分段起点 + 开始播放', (tester) async {
+      await pumpTranscribed(tester);
+      await addAnnotation(tester, segmentId: 'seg-2', tag: 'question');
+      expect(player.openCalls, 0);
+
+      await tester.tap(find.byKey(const Key('annotation_chip_an-seg-2-question')));
+      await tester.pumpAndSettle();
+
+      expect(player.openCalls, 1);
+      expect(player.lastPath, '/data/audio/interview_1.m4a');
+      // seg-2 起点 65.2s
+      expect(player.seeks.single, const Duration(milliseconds: 65200));
+      expect(player.toggleCalls, 1);
+      await drainAppTimers(tester);
+    });
+
+    testWidgets('长按标注 chip 编辑：换标签与改笔记后保存', (tester) async {
+      await pumpTranscribed(tester);
+      await addAnnotation(
+        tester,
+        segmentId: 'seg-1',
+        tag: 'highlight',
+        note: '先记一版',
+      );
+      await tester.longPress(
+        find.byKey(const Key('annotation_chip_an-seg-1-highlight')),
+      );
+      await tester.pumpAndSettle();
+
+      // 弹层预填：笔记已在输入框、标签已选中
+      expect(
+        tester.widget<TextField>(
+          find.byKey(const Key('annotation_note_field')),
+        ).controller!.text,
+        '先记一版',
+      );
+      await tester.tap(find.byKey(const Key('tag_chip_improvement')));
+      await tester.enterText(
+        find.byKey(const Key('annotation_note_field')),
+        '改成改进项',
+      );
+      await tester.tap(find.byKey(const Key('btn_annotation_save')));
+      await tester.pumpAndSettle();
+
+      final row = (await db.annotationsDao.getByInterview('iv-1')).single;
+      expect(row.tag, 'improvement');
+      expect(row.customTagName, isNull);
+      expect(row.note, '改成改进项');
+      await drainAppTimers(tester);
+    });
+
+    testWidgets('编辑弹层可删除标注：DB 清空，chip 消失', (tester) async {
+      await pumpTranscribed(tester);
+      await addAnnotation(tester, segmentId: 'seg-1', tag: 'highlight');
+      await tester.longPress(
+        find.byKey(const Key('annotation_chip_an-seg-1-highlight')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('btn_annotation_delete')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('btn_confirm_delete_annotation')));
+      await tester.pumpAndSettle();
+
+      expect(await db.annotationsDao.getByInterview('iv-1'), isEmpty);
+      expect(find.text('亮点'), findsNothing);
+      await drainAppTimers(tester);
+    });
+
+    testWidgets('标签筛选：点"失误"只看失误分段，点"全部"恢复', (tester) async {
+      await pumpTranscribed(tester);
+      await addAnnotation(tester, segmentId: 'seg-1', tag: 'highlight');
+      await addAnnotation(tester, segmentId: 'seg-2', tag: 'mistake');
+
+      await tester.tap(find.byKey(const Key('filter_chip_mistake')));
+      await tester.pumpAndSettle();
+      expect(find.text('我从架构与性能两方面说说'), findsOneWidget);
+      expect(find.text('请介绍一下你做过的最难的项目'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('filter_chip_all')));
+      await tester.pumpAndSettle();
+      expect(find.text('请介绍一下你做过的最难的项目'), findsOneWidget);
+      expect(find.text('我从架构与性能两方面说说'), findsOneWidget);
+      await drainAppTimers(tester);
+    });
+
+    testWidgets('新建自定义标签：落 tags 表并用于标注', (tester) async {
+      await pumpTranscribed(tester);
+      await tester.tap(find.byKey(const Key('btn_annotate_seg-1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('btn_new_tag')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('new_tag_field')), '系统设计');
+      await tester.tap(find.byKey(const Key('btn_new_tag_save')));
+      await tester.pumpAndSettle();
+      // 创建后自动选中
+      await tester.tap(find.byKey(const Key('btn_annotation_save')));
+      await tester.pumpAndSettle();
+
+      final tags = await db.tagsDao.getAll();
+      final custom = tags.singleWhere((t) => t.name == '系统设计');
+      expect(custom.isSystem, isFalse);
+
+      final row = (await db.annotationsDao.getByInterview('iv-1')).single;
+      expect(row.tag, 'custom');
+      expect(row.customTagName, '系统设计');
+      // 分段上的标注 chip + 筛选条各一处
+      expect(find.byKey(const Key('filter_chip_custom:系统设计')), findsOneWidget);
+      await drainAppTimers(tester);
+    });
+
+    testWidgets('重名标签被拦截：提示已存在，tags 表不变', (tester) async {
+      await pumpTranscribed(tester);
+      await tester.tap(find.byKey(const Key('btn_annotate_seg-1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('btn_new_tag')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('new_tag_field')), '亮点');
+      await tester.tap(find.byKey(const Key('btn_new_tag_save')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('标签已存在，换个名字试试'), findsOneWidget);
+      expect((await db.tagsDao.getAll()).where((t) => t.name == '亮点').length, 1);
+      await drainAppTimers(tester);
+    });
+
+    testWidgets('长按系统标签：提示不可删除', (tester) async {
+      await pumpTranscribed(tester);
+      await tester.tap(find.byKey(const Key('btn_annotate_seg-1')));
+      await tester.pumpAndSettle();
+      await tester.longPress(find.byKey(const Key('tag_chip_question')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('系统标签「问题」不可删除'), findsOneWidget);
+      expect((await db.tagsDao.getAll()).length, 5);
+      await drainAppTimers(tester);
+    });
+
+    testWidgets('长按自定义标签：确认后删除', (tester) async {
+      await pumpTranscribed(tester);
+      await db.tagsDao.insertOne(
+        TagsCompanion.insert(id: 'tag-custom-反问环节', name: '反问环节'),
+      );
+      await tester.tap(find.byKey(const Key('btn_annotate_seg-1')));
+      await tester.pumpAndSettle();
+      await tester.longPress(find.byKey(const Key('tag_chip_custom:反问环节')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('btn_confirm_delete_tag')));
+      await tester.pumpAndSettle();
+
+      expect(
+        (await db.tagsDao.getAll()).where((t) => t.name == '反问环节'),
+        isEmpty,
+      );
+      await drainAppTimers(tester);
+    });
+
+    testWidgets('迷你播放条：有音频显示，点播放调用 open+toggle', (tester) async {
+      await pumpTranscribed(tester);
+
+      expect(find.byKey(const Key('mini_player')), findsOneWidget);
+      expect(find.byKey(const Key('btn_play_pause')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('btn_play_pause')));
+      await tester.pumpAndSettle();
+
+      expect(player.openCalls, 1);
+      expect(player.lastPath, '/data/audio/interview_1.m4a');
+      expect(player.toggleCalls, 1);
+      await drainAppTimers(tester);
+    });
+
+    testWidgets('无音频文件的面试不显示播放条', (tester) async {
+      await db.interviewsDao.insertOne(
+        InterviewsCompanion.insert(
+          id: 'iv-1',
+          status: const Value('transcribed'),
+        ),
+      );
+      await insertSegments('iv-1');
+      await pumpDetail(tester, player: player);
+
+      expect(find.byKey(const Key('mini_player')), findsNothing);
       await drainAppTimers(tester);
     });
   });

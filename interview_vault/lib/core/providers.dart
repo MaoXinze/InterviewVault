@@ -5,6 +5,7 @@ import '../data/local/audio_files.dart' as audio_files;
 import '../data/secure/key_storage.dart';
 import '../features/api_key/ai_config_service.dart';
 import '../features/import/audio_import_service.dart';
+import '../features/interviews/audio_playback.dart';
 import '../features/recording/recorder_service.dart';
 import '../features/transcription/transcription_service.dart';
 import '../features/transcription/whisper_engine.dart';
@@ -126,4 +127,23 @@ final transcriptionProgressProvider =
 /// 模型下载事件流（模型管理页与转写入口共用）。
 final whisperModelEventsProvider = StreamProvider<ModelDownloadEvent>((ref) {
   return ref.watch(whisperModelGatewayProvider).events;
+});
+
+/// 面试录音回放（W3-M1：迷你播放条 + 点标注跳播放）。
+final audioPlaybackProvider = Provider<AudioPlayback>((ref) {
+  final playback = JustAudioPlayback();
+  ref.onDispose(playback.dispose);
+  return playback;
+});
+
+/// 回放状态流（迷你播放条渲染；订阅即重放当前值）。
+final audioPlaybackStatesProvider = StreamProvider<AudioPlaybackSnapshot>((ref) {
+  return ref.watch(audioPlaybackProvider).states;
+});
+
+/// 单场面试标注流（详情页标注 chips 与标签筛选实时刷新）。
+final annotationsByInterviewProvider =
+    StreamProvider.family<List<Annotation>, String>((ref, id) {
+  final db = ref.watch(appDatabaseProvider);
+  return db.annotationsDao.watchByInterview(id);
 });

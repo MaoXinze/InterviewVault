@@ -227,6 +227,27 @@ void main() {
       expect(row.tag, 'custom');
       expect(row.customTagName, '反问环节');
     });
+
+    test('watchByInterview 响应增删：详情页标注区实时刷新', () async {
+      final id = await insertInterview();
+      final stream = db.annotationsDao.watchByInterview(id);
+      expect(await stream.first, isEmpty);
+
+      await db.annotationsDao.insertOne(
+        AnnotationsCompanion.insert(
+          id: 'an-1',
+          interviewId: id,
+          tag: 'highlight',
+          note: const Value('这里的追问很关键'),
+        ),
+      );
+      final afterInsert = await stream.firstWhere((rows) => rows.isNotEmpty);
+      expect(afterInsert.single.id, 'an-1');
+
+      await db.annotationsDao.deleteOne('an-1');
+      final afterDelete = await stream.firstWhere((rows) => rows.isEmpty);
+      expect(afterDelete, isEmpty);
+    });
   });
 
   group('flashcards', () {
