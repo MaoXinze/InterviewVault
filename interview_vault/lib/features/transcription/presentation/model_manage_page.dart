@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,16 +20,29 @@ class ModelManagePage extends ConsumerStatefulWidget {
 class _ModelManagePageState extends ConsumerState<ModelManagePage> {
   final _downloaded = <TranscribeModel, bool>{};
 
+  /// 下载事件订阅：页面卸载必须取消，否则后台下载继续推事件时
+  /// 会对已卸载的 State 调 ref（真机日志抓到的未处理异常源）
+  StreamSubscription<ModelDownloadEvent>? _eventSub;
+
   @override
   void initState() {
     super.initState();
     _refresh();
     // 下载事件驱动刷新（进度/完成/失败）——UI 不持有下载状态
-    ref.read(whisperModelEventsProvider);
-    ref.read(whisperModelGatewayProvider).events.listen((_) => _refresh());
+    _eventSub = ref
+        .read(whisperModelGatewayProvider)
+        .events
+        .listen((_) => _refresh());
+  }
+
+  @override
+  void dispose() {
+    _eventSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _refresh() async {
+    if (!mounted) return;
     final models = ref.read(whisperModelGatewayProvider);
     for (final m in TranscribeModel.values) {
       _downloaded[m] = await models.isDownloaded(m);
