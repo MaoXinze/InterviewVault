@@ -110,9 +110,11 @@ class _FlashcardFlipPageState extends ConsumerState<FlashcardFlipPage>
                         builder: (context, child) {
                           final angle = _flipController.value * math.pi;
                           final showFront = angle < math.pi / 2;
+                          // 外层恒转 angle；背面内容预转 π，翻到位时
+                          // π + π = 2π 归位，文字不呈镜像（只有翻卡页用 3D）
                           final transform = Matrix4.identity()
                             ..setEntry(3, 2, 0.001)
-                            ..rotateY(showFront ? angle : angle - math.pi);
+                            ..rotateY(angle);
                           return Transform(
                             alignment: Alignment.center,
                             transform: transform,

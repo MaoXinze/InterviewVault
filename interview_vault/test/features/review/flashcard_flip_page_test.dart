@@ -178,4 +178,30 @@ void main() {
     await tester.pumpAndSettle();
     await drainAppTimers(tester);
   });
+
+  testWidgets('翻面后背面文字不呈镜像（合成旋转须归位）', (tester) async {
+    final cards = await seedCards();
+    await pumpFlip(tester, cards);
+
+    // 正面静止：合成 x 分量为 1
+    final frontMatrix = tester
+        .renderObject<RenderBox>(find.text('请介绍你最有挑战的项目'))
+        .getTransformTo(null);
+    expect(frontMatrix.entry(0, 0), moreOrLessEquals(1.0));
+
+    await tester.tap(find.byKey(const Key('flip_card_fc-1')));
+    await tester.pumpAndSettle();
+
+    // 背面静止：外层 rotationY(π) × 内容预转 rotationY(π) = 2π 归位；
+    // 修复前合成只剩 rotationY(π)，x 分量 -1 → 文字水平镜像
+    final backMatrix = tester
+        .renderObject<RenderBox>(find.text('我的回答'))
+        .getTransformTo(null);
+    expect(
+      backMatrix.entry(0, 0),
+      moreOrLessEquals(1.0),
+      reason: '背面文字被 3D 翻转镜像（合成 x 分量为负）',
+    );
+    await drainAppTimers(tester);
+  });
 }
