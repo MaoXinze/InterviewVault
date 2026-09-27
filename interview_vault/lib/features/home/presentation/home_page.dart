@@ -38,9 +38,7 @@ class HomePage extends ConsumerWidget {
                   _QuickAction(
                     icon: Icons.upload_file,
                     label: '导入音频',
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('音频导入将在 W2 提供')),
-                    ),
+                    onTap: () => context.push('/import'),
                   ),
                   const SizedBox(width: 12),
                   _QuickAction(

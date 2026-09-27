@@ -4,6 +4,7 @@ import '../data/database/app_database.dart';
 import '../data/local/audio_files.dart' as audio_files;
 import '../data/secure/key_storage.dart';
 import '../features/api_key/ai_config_service.dart';
+import '../features/import/audio_import_service.dart';
 import '../features/recording/recorder_service.dart';
 import 'widgets/theme_reveal.dart';
 
@@ -67,4 +68,9 @@ final recorderServiceProvider = Provider<RecorderService>((ref) {
 /// 函数式注入：测试用记录型桩替换。
 final audioFileCleanerProvider = Provider<Future<void> Function(String?)>(
   (ref) => audio_files.deleteAudioFile,
+);
+
+/// 音频导入服务（W2-M2：系统选择器 → 格式确认 → 复制进库）。
+final audioImportServiceProvider = Provider<AudioImportService>(
+  (ref) => AudioImportService(),
 );

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:record/record.dart' show RecordState;
 
+import '../../../core/format.dart';
 import '../../../core/motion.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme.dart';
@@ -79,7 +80,7 @@ class _RecordingPageState extends ConsumerState<RecordingPage> {
                   _Waveform(service: service),
                   const SizedBox(height: 20),
                   Text(
-                    _format(service.elapsed),
+                    formatClock(service.elapsed),
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
                           color: service.isIdle
                               ? colorScheme.onSurfaceVariant
@@ -174,15 +175,6 @@ class _RecordingPageState extends ConsumerState<RecordingPage> {
 }
 
 enum _LeaveAction { stay, discard, save }
-
-/// 时长格式：超 1 小时显示 h:mm:ss，否则 mm:ss。
-String _format(Duration d) {
-  String two(int v) => v.toString().padLeft(2, '0');
-  if (d.inHours > 0) {
-    return '${d.inHours}:${two(d.inMinutes % 60)}:${two(d.inSeconds % 60)}';
-  }
-  return '${two(d.inMinutes)}:${two(d.inSeconds % 60)}';
-}
 
 class _Controls extends ConsumerStatefulWidget {
   const _Controls({required this.service, required this.onStop});

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/home/presentation/home_page.dart';
 import '../features/api_key/presentation/api_key_page.dart';
+import '../features/import/presentation/import_page.dart';
 import '../features/interviews/presentation/interviews_page.dart';
 import '../features/recording/presentation/recording_page.dart';
 import '../features/review/presentation/review_page.dart';
@@ -60,6 +61,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/record',
       builder: (context, state) => const RecordingPage(),
+    ),
+    GoRoute(
+      path: '/import',
+      builder: (context, state) => const ImportPage(),
     ),
     GoRoute(
       path: '/api-key',
