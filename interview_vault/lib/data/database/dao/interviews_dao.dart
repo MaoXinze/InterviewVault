@@ -24,6 +24,12 @@ class InterviewsDao extends DatabaseAccessor<AppDatabase>
   Future<Interview?> getById(String id) =>
       (select(interviews)..where((t) => t.id.equals(id))).getSingleOrNull();
 
+  /// 单条监听（详情页：转写状态/全文变化实时刷新）
+  Stream<Interview?> watchById(String id) {
+    return (select(interviews)..where((t) => t.id.equals(id)))
+        .watchSingleOrNull();
+  }
+
   /// 按面试日期倒序（最新在前）
   Stream<List<Interview>> watchAll() {
     return (select(interviews)

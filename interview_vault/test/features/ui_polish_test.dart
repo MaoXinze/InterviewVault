@@ -147,6 +147,9 @@ void main() {
 
     await tester.tap(find.byKey(const Key('tab_settings')));
     await tester.pumpAndSettle();
+    // W2-M3 起设置页第一张卡片含"转写模型管理"，隐私入口可能被挤出视口
+    await tester.ensureVisible(find.text('隐私政策'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('隐私政策'));
     await tester.pumpAndSettle();
 

@@ -143,6 +143,48 @@ void main() {
       final rows = await db.segmentsDao.getByInterview(id);
       expect(rows.map((r) => r.id).toList(), ['seg-1', 'seg-2']);
     });
+
+    test('updateOne 修正文本/标记说话人并刷新 updated_at（W2-M3 编辑校正）', () async {
+      final id = await insertInterview();
+      await db.segmentsDao.insertOne(
+        TranscriptSegmentsCompanion.insert(
+          id: 'seg-e1',
+          interviewId: id,
+          startTime: 0,
+          endTime: 3.5,
+          content: '请介绍你自己',
+        ),
+      );
+      final before = await db.segmentsDao.getAll();
+      final original = before.firstWhere((r) => r.id == 'seg-e1');
+
+      await db.segmentsDao.updateOne(
+        'seg-e1',
+        const TranscriptSegmentsCompanion(
+          content: Value('请介绍一下你自己'),
+          speaker: Value('interviewer'),
+        ),
+      );
+      final edited = await db.segmentsDao.getAll();
+      final row = edited.firstWhere((r) => r.id == 'seg-e1');
+      expect(row.content, '请介绍一下你自己');
+      expect(row.speaker, 'interviewer');
+      expect(row.updatedAt, isNot(original.updatedAt));
+    });
+
+    test('watchById 监听单条面试行（详情页响应转写状态变化）', () async {
+      final id = await insertInterview(status: 'draft');
+      final first = await db.interviewsDao.watchById(id).first;
+      expect(first, isNotNull);
+      expect(first!.status, 'draft');
+
+      await db.interviewsDao.updateOne(
+        id,
+        const InterviewsCompanion(status: Value('transcribed')),
+      );
+      final second = await db.interviewsDao.watchById(id).first;
+      expect(second!.status, 'transcribed');
+    });
   });
 
   group('annotations 按标签筛选', () {

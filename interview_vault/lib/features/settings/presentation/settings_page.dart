@@ -59,6 +59,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/api-key'),
                 ),
+                ListTile(
+                  leading: const Icon(Icons.graphic_eq),
+                  title: const Text('转写模型管理'),
+                  subtitle: const Text('下载/删除本地 Whisper 模型，离线转写'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/models'),
+                ),
                 KeyedSubtree(
                   key: _darkTileKey,
                   child: SwitchListTile(

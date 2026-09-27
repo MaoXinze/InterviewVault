@@ -57,3 +57,4 @@ secrets/
 .zcode/plans/
 .superpowers/
 interview_vault/android/.kotlin/
+interview_vault/android/build/

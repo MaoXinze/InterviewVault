@@ -6,6 +6,9 @@ import '../data/secure/key_storage.dart';
 import '../features/api_key/ai_config_service.dart';
 import '../features/import/audio_import_service.dart';
 import '../features/recording/recorder_service.dart';
+import '../features/transcription/transcription_service.dart';
+import '../features/transcription/whisper_engine.dart';
+import '../features/transcription/whisper_model_manager.dart';
 import 'widgets/theme_reveal.dart';
 
 /// 数据库单例：W1 起全程复用（drift 内部管理连接）。
@@ -74,3 +77,53 @@ final audioFileCleanerProvider = Provider<Future<void> Function(String?)>(
 final audioImportServiceProvider = Provider<AudioImportService>(
   (ref) => AudioImportService(),
 );
+
+/// 本地转写模型网关（W2-M3：下载/校验/删除 ggml 模型）。
+final whisperModelGatewayProvider = Provider<WhisperModelGateway>(
+  (ref) => WhisperModelManager(),
+);
+
+/// 本地转写引擎（whisper_ggml 封装；推理在包内后台 isolate）。
+final whisperEngineProvider = Provider<WhisperEngine>(
+  (ref) => WhisperGgmlEngine(),
+);
+
+/// 转写编排服务（分段落库 + 状态翻转 + 进度事件）。
+final transcriptionServiceProvider = Provider<TranscriptionRunner>((ref) {
+  final service = TranscriptionService(
+    db: ref.watch(appDatabaseProvider),
+    engine: ref.watch(whisperEngineProvider),
+    isModelDownloaded: (model) =>
+        ref.watch(whisperModelGatewayProvider).isDownloaded(model),
+  );
+  ref.onDispose(service.dispose);
+  return service;
+});
+
+/// 单场面试详情流（详情页：转写状态变化实时刷新）。
+final interviewByIdProvider =
+    StreamProvider.family<Interview?, String>((ref, id) {
+  final db = ref.watch(appDatabaseProvider);
+  return db.interviewsDao.watchById(id);
+});
+
+/// 单场面试逐字稿分段流（详情页）。
+final segmentsByInterviewProvider =
+    StreamProvider.family<List<TranscriptSegment>, String>((ref, id) {
+  final db = ref.watch(appDatabaseProvider);
+  return db.segmentsDao.watchByInterview(id);
+});
+
+/// 单场面试的最近一次转写事件（详情页进度条；无事件时为 loading）。
+final transcriptionProgressProvider =
+    StreamProvider.family<TranscriptionEvent, String>((ref, id) {
+  return ref
+      .watch(transcriptionServiceProvider)
+      .events
+      .where((e) => e.interviewId == id);
+});
+
+/// 模型下载事件流（模型管理页与转写入口共用）。
+final whisperModelEventsProvider = StreamProvider<ModelDownloadEvent>((ref) {
+  return ref.watch(whisperModelGatewayProvider).events;
+});

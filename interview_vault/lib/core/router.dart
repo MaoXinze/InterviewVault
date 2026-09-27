@@ -4,11 +4,13 @@ import 'package:go_router/go_router.dart';
 import '../features/home/presentation/home_page.dart';
 import '../features/api_key/presentation/api_key_page.dart';
 import '../features/import/presentation/import_page.dart';
+import '../features/interviews/presentation/interview_detail_page.dart';
 import '../features/interviews/presentation/interviews_page.dart';
 import '../features/recording/presentation/recording_page.dart';
 import '../features/review/presentation/review_page.dart';
 import '../features/settings/presentation/privacy_page.dart';
 import '../features/settings/presentation/settings_page.dart';
+import '../features/transcription/presentation/model_manage_page.dart';
 import 'motion.dart';
 import 'theme.dart';
 import 'widgets/motion.dart';
@@ -65,6 +67,16 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/import',
       builder: (context, state) => const ImportPage(),
+    ),
+    GoRoute(
+      path: '/interviews/:id',
+      builder: (context, state) => InterviewDetailPage(
+        interviewId: state.pathParameters['id']!,
+      ),
+    ),
+    GoRoute(
+      path: '/models',
+      builder: (context, state) => const ModelManagePage(),
     ),
     GoRoute(
       path: '/api-key',

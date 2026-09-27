@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/providers.dart';
 import '../../../core/theme.dart';
@@ -177,10 +178,8 @@ class _InterviewsPageState extends ConsumerState<InterviewsPage> {
                                   onPressed: () => ArcDismiss.maybeOf(context)
                                       ?.confirmAndDismiss(),
                                 ),
-                                onTap: () => ScaffoldMessenger.of(context)
-                                    .showSnackBar(
-                                  const SnackBar(
-                                      content: Text('面试详情页将在 W2 提供')),
+                                onTap: () => context.push(
+                                  '/interviews/${interview.id}',
                                 ),
                               ),
                             ),

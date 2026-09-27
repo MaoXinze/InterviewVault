@@ -14,6 +14,12 @@ class SegmentsDao extends DatabaseAccessor<AppDatabase>
   Future<void> insertOne(TranscriptSegmentsCompanion entry) =>
       into(transcriptSegments).insert(entry, mode: InsertMode.insertOrReplace);
 
+  /// 单段编辑校正 / 说话人标记（W2-M3 逐字稿页）
+  Future<void> updateOne(String id, TranscriptSegmentsCompanion entry) =>
+      (update(transcriptSegments)..where((t) => t.id.equals(id))).write(
+        entry.copyWith(updatedAt: Value(nowIso())),
+      );
+
   Future<void> insertAll(List<TranscriptSegmentsCompanion> entries) =>
       batch((b) => b.insertAll(
             transcriptSegments,
