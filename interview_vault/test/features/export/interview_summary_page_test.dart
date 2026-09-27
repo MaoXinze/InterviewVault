@@ -26,11 +26,11 @@ class _StubExportService extends MarkdownExportService {
   String? lastInterviewId;
 
   @override
-  Future<ExportedMarkdown> exportInterview(String interviewId) async {
+  Future<ExportedFile> exportInterview(String interviewId) async {
     calls++;
     lastInterviewId = interviewId;
     if (error != null) throw error!;
-    return const ExportedMarkdown(
+    return const ExportedFile(
       path: '/stub/exports/面试复盘-字节跳动.md',
       fileName: '面试复盘-字节跳动.md',
     );

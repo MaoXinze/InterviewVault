@@ -11,10 +11,13 @@ import 'app_database.dart';
 /// - 用户可能依赖该 JSON 做二次处理，任何调整都是破坏性变更。
 const exportSchemaVersion = 1;
 
-Future<Map<String, dynamic>> buildExportPayload(AppDatabase db) async {
+Future<Map<String, dynamic>> buildExportPayload(
+  AppDatabase db, {
+  DateTime Function()? now,
+}) async {
   return {
     'schema_version': exportSchemaVersion,
-    'exported_at': DateTime.now().toIso8601String(),
+    'exported_at': (now ?? DateTime.now)().toIso8601String(),
     'data': {
       'interviews': (await db.interviewsDao.getAll())
           .map((r) => r.toJson())

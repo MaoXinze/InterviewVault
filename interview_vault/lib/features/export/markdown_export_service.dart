@@ -9,8 +9,8 @@ import '../interviews/annotation_tags.dart';
 import '../flashcards/flashcard_service.dart';
 
 /// Markdown 导出的单条结果。
-class ExportedMarkdown {
-  const ExportedMarkdown({required this.path, required this.fileName});
+class ExportedFile {
+  const ExportedFile({required this.path, required this.fileName});
 
   final String path;
   final String fileName;
@@ -124,7 +124,7 @@ class MarkdownExportService {
   static Future<String> _defaultDocumentsPath() async =>
       (await getApplicationDocumentsDirectory()).path;
 
-  Future<ExportedMarkdown> exportInterview(String interviewId) async {
+  Future<ExportedFile> exportInterview(String interviewId) async {
     final interview = await db.interviewsDao.getById(interviewId);
     if (interview == null) {
       throw StateError('面试记录不存在：$interviewId');
@@ -155,7 +155,7 @@ class MarkdownExportService {
       );
     }
 
-    return ExportedMarkdown(path: file.path, fileName: fileName);
+    return ExportedFile(path: file.path, fileName: fileName);
   }
 
   /// 文件名 = 面试复盘 + 公司/岗位；路径非法字符一律替换为下划线。

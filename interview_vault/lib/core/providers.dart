@@ -5,6 +5,7 @@ import '../data/database/app_database.dart';
 import '../data/local/audio_files.dart' as audio_files;
 import '../data/secure/key_storage.dart';
 import '../features/api_key/ai_config_service.dart';
+import '../features/export/data_management_service.dart';
 import '../features/export/markdown_export_service.dart';
 import '../features/flashcards/flashcard_service.dart';
 import '../features/import/audio_import_service.dart';
@@ -187,6 +188,16 @@ final flashcardsByInterviewProvider =
 /// Markdown 复盘导出（W4-M1：拼模板 + 落盘 exports/ + 状态推进）。
 final markdownExportServiceProvider = Provider<MarkdownExportService>((ref) {
   return MarkdownExportService(db: ref.watch(appDatabaseProvider));
+});
+
+/// 数据管理（W4-M2：全量 JSON/Markdown 导出 + 删除全部）。
+/// 录音清理复用"删除即真删"的注入式清理函数。
+final dataManagementServiceProvider = Provider<DataManagementService>((ref) {
+  return DataManagementService(
+    db: ref.watch(appDatabaseProvider),
+    keyStorage: ref.watch(keyStorageProvider),
+    audioFileCleaner: ref.watch(audioFileCleanerProvider),
+  );
 });
 
 /// 导出后的系统分享入口（share_plus），函数式注入便于测试替换。

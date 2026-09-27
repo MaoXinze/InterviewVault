@@ -157,6 +157,9 @@ void main() {
       );
       final before = await db.segmentsDao.getAll();
       final original = before.firstWhere((r) => r.id == 'seg-e1');
+      // nowIso() 毫秒精度：插入与更新可能落在同一毫秒，先走 5ms
+      // 避免 updated_at 刷新断言撞车（纯时序问题，与实现无关）
+      await Future<void>.delayed(const Duration(milliseconds: 5));
 
       await db.segmentsDao.updateOne(
         'seg-e1',
