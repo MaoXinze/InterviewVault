@@ -6,8 +6,20 @@ import 'core/providers.dart';
 import 'core/router.dart';
 import 'core/theme.dart';
 import 'core/widgets/theme_reveal.dart';
+import 'data/database/app_database.dart';
+import 'data/demo/demo_seed.dart';
 
-void main() {
+/// 演示构建开关：flutter build apk --release --dart-define=DEMO_SEED=true
+/// 首次启动（面试表为空）自动填充演示数据；正式构建不含填充路径。
+const _demoSeed = bool.fromEnvironment('DEMO_SEED');
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (_demoSeed) {
+    final db = AppDatabase();
+    await seedDemoDataIfEmpty(db);
+    await db.close();
+  }
   runApp(const ProviderScope(child: InterviewVaultApp()));
 }
 
