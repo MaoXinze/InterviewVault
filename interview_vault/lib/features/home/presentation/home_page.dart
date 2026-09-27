@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/motion.dart';
+import '../../mock/presentation/mock_setup_page.dart';
 
 /// 首页：时间问候 + 快捷入口 + 待回顾 hero（卡片堆叠 + 数字滚动）+ 最近面试。
 /// 人格：清晨·阳光——问候语是亲近感的来源，配色性格在主题层统一。
@@ -44,9 +45,8 @@ class HomePage extends ConsumerWidget {
                   _QuickAction(
                     icon: Icons.psychology,
                     label: '模拟面试',
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('模拟面试将在 W3 提供')),
-                    ),
+                    onTap: () =>
+                        MockSetupPage.enterMockInterview(context, ref),
                   ),
                 ],
               ),

@@ -7,6 +7,7 @@ import '../features/api_key/ai_config_service.dart';
 import '../features/flashcards/flashcard_service.dart';
 import '../features/import/audio_import_service.dart';
 import '../features/interviews/audio_playback.dart';
+import '../features/mock/mock_interview_service.dart';
 import '../features/recording/recorder_service.dart';
 import '../features/transcription/transcription_service.dart';
 import '../features/transcription/whisper_engine.dart';
@@ -152,6 +153,15 @@ final annotationsByInterviewProvider =
 /// 问题卡片编排（W3-M2：标注生成卡片 + AI 参考流式）。
 final flashcardServiceProvider = Provider<FlashcardService>((ref) {
   return FlashcardService(
+    db: ref.watch(appDatabaseProvider),
+    chatClientFactory: () =>
+        ref.read(aiConfigServiceProvider).activeChatClient(),
+  );
+});
+
+/// 模拟面试编排（W3-M3：出题 + 逐题流式反馈 + 会话落库）。
+final mockInterviewServiceProvider = Provider<MockInterviewService>((ref) {
+  return MockInterviewService(
     db: ref.watch(appDatabaseProvider),
     chatClientFactory: () =>
         ref.read(aiConfigServiceProvider).activeChatClient(),

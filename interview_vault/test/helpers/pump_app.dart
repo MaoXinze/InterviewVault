@@ -30,19 +30,21 @@ class FakeKeyStorage extends Mock implements KeyStorage {
 }
 
 /// 泵起完整 App（内存数据库 + 桩 KeyStorage），可注入自定义录音服务、
-/// 音频文件清理桩与导入服务。
+/// 音频文件清理桩、导入服务与外部持有的 FakeKeyStorage（测试内预置 Key）。
 Future<AppDatabase> pumpInterviewVaultApp(
   WidgetTester tester, {
   RecorderService? recorder,
   Future<void> Function(String?)? audioFileCleaner,
   AudioImportService? audioImportService,
+  FakeKeyStorage? keyStorage,
 }) async {
   final db = AppDatabase.forTesting(NativeDatabase.memory());
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         appDatabaseProvider.overrideWithValue(db),
-        keyStorageProvider.overrideWithValue(FakeKeyStorage()),
+        keyStorageProvider
+            .overrideWithValue(keyStorage ?? FakeKeyStorage()),
         if (recorder != null) recorderServiceProvider.overrideWithValue(recorder),
         if (audioFileCleaner != null)
           audioFileCleanerProvider.overrideWithValue(audioFileCleaner),

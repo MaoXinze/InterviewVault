@@ -8,6 +8,9 @@ import '../features/api_key/presentation/api_key_page.dart';
 import '../features/import/presentation/import_page.dart';
 import '../features/interviews/presentation/interview_detail_page.dart';
 import '../features/interviews/presentation/interviews_page.dart';
+import '../features/mock/presentation/mock_session_page.dart';
+import '../features/mock/presentation/mock_setup_page.dart';
+import '../features/mock/mock_interview_service.dart';
 import '../features/recording/presentation/recording_page.dart';
 import '../features/review/presentation/flashcard_flip_page.dart';
 import '../features/review/presentation/review_page.dart';
@@ -70,6 +73,24 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/import',
       builder: (context, state) => const ImportPage(),
+    ),
+    GoRoute(
+      path: '/mock',
+      builder: (context, state) => const MockSetupPage(),
+    ),
+    GoRoute(
+      path: '/mock/session',
+      builder: (context, state) {
+        final plan = state.extra;
+        return MockSessionPage(
+          plan: plan is MockSessionPlan ? plan : const MockSessionPlan(
+            position: '',
+            resume: '',
+            jd: '',
+            questions: [],
+          ),
+        );
+      },
     ),
     GoRoute(
       path: '/interviews/:id',
