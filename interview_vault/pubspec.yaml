@@ -59,6 +59,8 @@ dependencies:
   # 录音文件落位 / 日期格式化
   path_provider: ^2.1.5
   intl: ^0.20.2
+  # 手机录音机直导：请求 READ_MEDIA_AUDIO(33+)/READ_EXTERNAL_STORAGE(<33)
+  permission_handler: ^12.0.1
   # zone 感知时钟：RecorderService 计时用 clock.stopwatch()，
   # fake_async 测试里自动跟随假时钟（原生 Stopwatch 不受 fake_async 控制）
   clock: ^1.1.3

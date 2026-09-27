@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:interview_vault/core/providers.dart';
 import 'package:interview_vault/features/import/audio_import_service.dart';
+import 'package:interview_vault/features/import/phone_recordings_service.dart';
 import 'package:interview_vault/features/recording/recorder_service.dart';
 import 'package:interview_vault/data/database/app_database.dart';
 import 'package:interview_vault/data/secure/key_storage.dart';
@@ -30,12 +31,13 @@ class FakeKeyStorage extends Mock implements KeyStorage {
 }
 
 /// 泵起完整 App（内存数据库 + 桩 KeyStorage），可注入自定义录音服务、
-/// 音频文件清理桩与导入服务。
+/// 音频文件清理桩、导入服务与手机录音机直导服务。
 Future<AppDatabase> pumpInterviewVaultApp(
   WidgetTester tester, {
   RecorderService? recorder,
   Future<void> Function(String?)? audioFileCleaner,
   AudioImportService? audioImportService,
+  PhoneRecordingsService? phoneRecordings,
 }) async {
   final db = AppDatabase.forTesting(NativeDatabase.memory());
   await tester.pumpWidget(
@@ -48,6 +50,8 @@ Future<AppDatabase> pumpInterviewVaultApp(
           audioFileCleanerProvider.overrideWithValue(audioFileCleaner),
         if (audioImportService != null)
           audioImportServiceProvider.overrideWithValue(audioImportService),
+        if (phoneRecordings != null)
+          phoneRecordingsServiceProvider.overrideWithValue(phoneRecordings),
       ],
       child: const InterviewVaultApp(),
     ),

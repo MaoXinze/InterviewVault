@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:interview_vault/features/import/audio_import_service.dart';
+import 'package:interview_vault/features/import/phone_recordings_service.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 
 import '../../helpers/pump_app.dart';
 
@@ -135,4 +137,120 @@ void main() {
 
     await drainAppTimers(tester);
   });
+
+  testWidgets('从手机录音机导入：权限通过 → 列表选择 → 确认入库', (tester) async {
+    final importService = _StubImportService(pickResults: [null]);
+    final recorder = _StubPhoneRecordings();
+    final db = await pumpInterviewVaultApp(
+      tester,
+      audioImportService: importService,
+      phoneRecordings: recorder,
+    );
+    addTearDown(db.close);
+
+    // 录音机流程会取临时目录（path_provider 平台通道桩）
+    final originalProvider = PathProviderPlatform.instance;
+    PathProviderPlatform.instance = _FakePathProviderPlatform();
+    addTearDown(() {
+      PathProviderPlatform.instance = originalProvider;
+    });
+
+    await tester.tap(find.byKey(const Key('tab_home')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('导入音频'));
+    await tester.pumpAndSettle();
+
+    // 空态双入口：录音机为主、文件选择为辅
+    expect(find.byKey(const Key('btn_import_recorder')), findsOneWidget);
+    expect(find.byKey(const Key('btn_import_pick')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('btn_import_recorder')));
+    await tester.pumpAndSettle();
+
+    // 列表展示手机录音机录音
+    expect(find.text('手机录音机（2 条）'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('recorder_item_recording_1.m4a')));
+    await tester.pumpAndSettle();
+
+    // 复制自录音机 → 走统一确认页 → 确认入库
+    expect(find.text('recording_1.m4a'), findsOneWidget);
+    expect(recorder.copiedUri, 'content://media/external/audio/media/1');
+    expect(importService.imported, isEmpty);
+
+    await tester.tap(find.byKey(const Key('btn_import_confirm')));
+    await tester.pumpAndSettle();
+
+    expect(importService.imported, hasLength(1));
+    final rows = await db.interviewsDao.getAll();
+    expect(rows, hasLength(1));
+    expect(find.byKey(const Key('page_interviews')), findsOneWidget);
+
+    await drainAppTimers(tester);
+  });
+
+  testWidgets('从手机录音机导入：权限被拒 → 提示且不弹列表', (tester) async {
+    final importService = _StubImportService(pickResults: [null]);
+    final recorder = _StubPhoneRecordings()..permissionGranted = false;
+    final db = await pumpInterviewVaultApp(
+      tester,
+      audioImportService: importService,
+      phoneRecordings: recorder,
+    );
+    addTearDown(db.close);
+
+    await tester.tap(find.byKey(const Key('tab_home')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('导入音频'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('btn_import_recorder')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('需要"音乐和音频"权限才能读取手机录音'), findsOneWidget);
+    expect(find.text('手机录音机（2 条）'), findsNothing);
+    expect(find.byKey(const Key('btn_import_recorder')), findsOneWidget);
+
+    await drainAppTimers(tester);
+  });
+}
+
+/// path_provider 平台通道桩（录音机流程取临时目录用）
+class _FakePathProviderPlatform extends PathProviderPlatform {
+  @override
+  Future<String?> getTemporaryPath() async => '/stub/cache';
+}
+
+/// 手机录音机服务桩：权限/列表/复制全部内存化
+class _StubPhoneRecordings extends PhoneRecordingsService {
+  _StubPhoneRecordings() : super(verifyCopied: (_) => true);
+
+  bool permissionGranted = true;
+  List<PhoneRecording> recordings = [
+    const PhoneRecording(
+      sourceUri: 'content://media/external/audio/media/1',
+      fileName: 'recording_1.m4a',
+      durationMs: 125000,
+      sizeBytes: 2048,
+      recordedAt: null,
+    ),
+    const PhoneRecording(
+      sourceUri: 'content://media/external/audio/media/2',
+      fileName: 'call_2.mp3',
+      durationMs: 30000,
+      sizeBytes: 512,
+      recordedAt: null,
+    ),
+  ];
+  String? copiedUri;
+
+  @override
+  Future<bool> ensurePermission() async => permissionGranted;
+
+  @override
+  Future<List<PhoneRecording>> list() async => recordings;
+
+  @override
+  Future<void> copyTo(String sourceUri, String targetPath) async {
+    copiedUri = sourceUri;
+  }
 }

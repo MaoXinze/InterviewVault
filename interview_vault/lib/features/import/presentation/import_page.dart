@@ -1,17 +1,23 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../core/format.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/motion.dart';
 import '../../../data/database/app_database.dart';
-import '../audio_import_service.dart';
+import '../audio_import_service.dart'
+    show ImportedAudioInfo, PickedAudio, sanitizeFileName;
+import '../phone_recordings_service.dart';
 
 /// 音频导入（W2-M2，PRD 2.3）：选文件 → 展示时长/大小/格式 → 确认后
 /// 复制进库目录并落一条草稿面试记录。全程本地，不上传。
+/// W2-M2 补充：支持直接从手机自带录音机选择（免翻系统文件管理器）。
 class ImportPage extends ConsumerStatefulWidget {
   const ImportPage({super.key});
 
@@ -22,6 +28,9 @@ class ImportPage extends ConsumerStatefulWidget {
 class _ImportPageState extends ConsumerState<ImportPage> {
   ImportedAudioInfo? _info;
   bool _busy = false;
+
+  /// 录音机导入的临时副本（确认入库后清理）
+  String? _tempPath;
 
   @override
   void initState() {
@@ -47,6 +56,49 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     }
   }
 
+  /// 从手机自带录音机选择：权限 → 列表 → 复制临时副本 → 走统一确认管线
+  Future<void> _importFromRecorder() async {
+    if (_busy) return;
+    final service = ref.read(phoneRecordingsServiceProvider);
+    if (!await service.ensurePermission()) {
+      if (mounted) _showSnack('需要"音乐和音频"权限才能读取手机录音');
+      return;
+    }
+    final recordings = await service.list();
+    if (!mounted) return;
+    final picked = await showModalBottomSheet<PhoneRecording>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => _RecorderSheet(recordings: recordings),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final tempPath =
+          '${tempDir.path}/recorder_${DateTime.now().millisecondsSinceEpoch}_'
+          '${sanitizeFileName(picked.fileName)}';
+      await service.copyTo(picked.sourceUri, tempPath);
+      final importService = ref.read(audioImportServiceProvider);
+      final info = await importService.inspect(
+        PickedAudio(
+          path: tempPath,
+          fileName: picked.fileName,
+          sizeBytes: picked.sizeBytes,
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _tempPath = tempPath;
+        _info = info;
+      });
+    } on Exception {
+      if (mounted) _showSnack('读取录音失败，请重试');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _confirmImport() async {
     final info = _info;
     if (info == null || _busy) return;
@@ -61,6 +113,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
               audioFilePath: Value(storedPath),
             ),
           );
+      _cleanupTemp();
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('已导入到面试列表')));
@@ -70,6 +123,19 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// 临时副本入库即真删（导入失败时保留，用户可重试确认）
+  void _cleanupTemp() {
+    final path = _tempPath;
+    if (path == null) return;
+    try {
+      final f = File(path);
+      if (f.existsSync()) f.deleteSync();
+    } on Exception {
+      // 缓存清理失败不影响导入结果
+    }
+    _tempPath = null;
   }
 
   void _showSnack(String message) {
@@ -88,7 +154,10 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         child: _busy && info == null
             ? const CircularProgressIndicator()
             : info == null
-                ? _EmptyPick(onPick: _pick)
+                ? _EmptyPick(
+                    onPick: _pick,
+                    onImportFromRecorder: _importFromRecorder,
+                  )
                 : _ConfirmCard(
                     info: info,
                     busy: _busy,
@@ -100,11 +169,12 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   }
 }
 
-/// 尚未选择文件：入口引导
+/// 尚未选择文件：入口引导（文件选择器 / 手机录音机两条路径）
 class _EmptyPick extends StatelessWidget {
-  const _EmptyPick({required this.onPick});
+  const _EmptyPick({required this.onPick, required this.onImportFromRecorder});
 
   final VoidCallback onPick;
+  final VoidCallback onImportFromRecorder;
 
   @override
   Widget build(BuildContext context) {
@@ -146,24 +216,119 @@ class _EmptyPick extends StatelessWidget {
         ),
         const SizedBox(height: 28),
         PressableScale(
-          onTap: onPick,
+          onTap: onImportFromRecorder,
           child: Container(
-            key: const Key('btn_import_pick'),
+            key: const Key('btn_import_recorder'),
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
             decoration: BoxDecoration(
               color: AppTheme.gold,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Text(
-              '选择文件',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppTheme.onGold,
-                    fontWeight: FontWeight.w700,
-                  ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.settings_voice,
+                    size: 18, color: AppTheme.onGold),
+                const SizedBox(width: 8),
+                Text(
+                  '从手机录音机导入',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: AppTheme.onGold,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ],
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        TextButton(
+          key: const Key('btn_import_pick'),
+          onPressed: onPick,
+          child: Text(
+            '从文件中选择',
+            style: Theme.of(context)
+                .textTheme
+                .labelLarge
+                ?.copyWith(color: colorScheme.onSurfaceVariant),
+          ),
+        ),
       ],
+    );
+  }
+}
+
+/// 手机录音机录音列表（底部弹窗）
+class _RecorderSheet extends StatelessWidget {
+  const _RecorderSheet({required this.recordings});
+
+  final List<PhoneRecording> recordings;
+
+  String _formatDate(DateTime? t) =>
+      t == null ? '' : t.toIso8601String().substring(0, 16).replaceFirst('T', ' ');
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: recordings.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('未找到手机录音',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  Text(
+                    '录音机里还没有录音，或它们存放在其他目录。\n可以用下方"从文件中选择"定位到录音文件。',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            )
+          : ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Text(
+                    '手机录音机（${recordings.length} 条）',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+                for (final r in recordings)
+                  ListTile(
+                    key: Key('recorder_item_${r.fileName}'),
+                    leading: const Icon(Icons.graphic_eq, color: AppTheme.gold),
+                    title: Text(
+                      r.fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      [
+                        _formatDate(r.recordedAt),
+                        if (r.durationMs != null && r.durationMs! > 0)
+                          formatClock(Duration(milliseconds: r.durationMs!)),
+                        if (r.sizeBytes > 0) formatFileSize(r.sizeBytes),
+                      ].where((s) => s.isNotEmpty).join(' · '),
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).pop(r),
+                  ),
+              ],
+            ),
     );
   }
 }

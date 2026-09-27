@@ -5,6 +5,7 @@ import '../data/local/audio_files.dart' as audio_files;
 import '../data/secure/key_storage.dart';
 import '../features/api_key/ai_config_service.dart';
 import '../features/import/audio_import_service.dart';
+import '../features/import/phone_recordings_service.dart';
 import '../features/recording/recorder_service.dart';
 import '../features/transcription/transcription_service.dart';
 import '../features/transcription/whisper_engine.dart';
@@ -76,6 +77,11 @@ final audioFileCleanerProvider = Provider<Future<void> Function(String?)>(
 /// 音频导入服务（W2-M2：系统选择器 → 格式确认 → 复制进库）。
 final audioImportServiceProvider = Provider<AudioImportService>(
   (ref) => AudioImportService(),
+);
+
+/// 手机录音机直导（App 内列出系统录音机录音，点选即入库）。
+final phoneRecordingsServiceProvider = Provider<PhoneRecordingsService>(
+  (ref) => PhoneRecordingsService(),
 );
 
 /// 本地转写模型网关（W2-M3：下载/校验/删除 ggml 模型）。
