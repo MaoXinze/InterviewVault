@@ -5,6 +5,7 @@ import '../data/database/app_database.dart';
 import '../features/flashcards/presentation/flashcard_detail_page.dart';
 import '../features/export/presentation/interview_summary_page.dart';
 import '../features/home/presentation/home_page.dart';
+import '../features/interviews/presentation/daily_summary_page.dart';
 import '../features/api_key/presentation/api_key_page.dart';
 import '../features/import/presentation/import_page.dart';
 import '../features/interviews/presentation/interview_detail_page.dart';
@@ -104,6 +105,10 @@ final appRouter = GoRouter(
       builder: (context, state) => InterviewSummaryPage(
         interviewId: state.pathParameters['id']!,
       ),
+    ),
+    GoRoute(
+      path: '/daily',
+      builder: (context, state) => const DailySummaryPage(),
     ),
     GoRoute(
       path: '/cards/:id',

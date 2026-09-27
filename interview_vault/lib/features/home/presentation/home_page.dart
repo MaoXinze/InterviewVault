@@ -60,7 +60,9 @@ class HomePage extends ConsumerWidget {
                 child: ListTile(
                   leading: const Icon(Icons.today),
                   title: const Text('今日汇总'),
-                  subtitle: const Text('当天面试/录音的摘要视图（W4 提供）'),
+                  subtitle: const Text('按日回看所有面试与录音的节奏'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/daily'),
                 ),
               ),
             ),
