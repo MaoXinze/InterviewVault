@@ -4,6 +4,7 @@ import '../data/database/app_database.dart';
 import '../data/local/audio_files.dart' as audio_files;
 import '../data/secure/key_storage.dart';
 import '../features/api_key/ai_config_service.dart';
+import '../features/flashcards/flashcard_service.dart';
 import '../features/import/audio_import_service.dart';
 import '../features/interviews/audio_playback.dart';
 import '../features/recording/recorder_service.dart';
@@ -146,4 +147,20 @@ final annotationsByInterviewProvider =
     StreamProvider.family<List<Annotation>, String>((ref, id) {
   final db = ref.watch(appDatabaseProvider);
   return db.annotationsDao.watchByInterview(id);
+});
+
+/// 问题卡片编排（W3-M2：标注生成卡片 + AI 参考流式）。
+final flashcardServiceProvider = Provider<FlashcardService>((ref) {
+  return FlashcardService(
+    db: ref.watch(appDatabaseProvider),
+    chatClientFactory: () =>
+        ref.read(aiConfigServiceProvider).activeChatClient(),
+  );
+});
+
+/// 单张卡片流（卡片详情页）。
+final cardByIdProvider =
+    StreamProvider.family<Flashcard?, String>((ref, id) {
+  final db = ref.watch(appDatabaseProvider);
+  return db.flashcardsDao.watchById(id);
 });

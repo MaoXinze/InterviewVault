@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
+import '../../../core/router.dart';
 import '../../../core/theme.dart';
 import '../../../data/database/app_database.dart';
 import '../annotation_tags.dart';
@@ -154,6 +155,17 @@ class _AnnotationEditorSheetState extends ConsumerState<AnnotationEditorSheet> {
                   child: const Text('取消'),
                 ),
                 const SizedBox(width: 8),
+                if (_selectedKey == 'question')
+                  FilledButton.tonal(
+                    key: const Key('btn_save_as_card'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppTheme.gold.withValues(alpha: 0.16),
+                      foregroundColor: AppTheme.goldDeep,
+                    ),
+                    onPressed: () => _save(createCard: true),
+                    child: const Text('存为卡片'),
+                  ),
+                const SizedBox(width: 8),
                 FilledButton(
                   key: const Key('btn_annotation_save'),
                   style: FilledButton.styleFrom(
@@ -171,9 +183,10 @@ class _AnnotationEditorSheetState extends ConsumerState<AnnotationEditorSheet> {
     );
   }
 
-  Future<void> _save() async {
+  Future<void> _save({bool createCard = false}) async {
     final key = _selectedKey;
     if (key == null) return;
+    final messenger = ScaffoldMessenger.of(context);
     final isCustom = key.startsWith('custom:');
     final customName = isCustom ? key.substring('custom:'.length) : null;
     final note = _noteController.text.trim();
@@ -184,10 +197,12 @@ class _AnnotationEditorSheetState extends ConsumerState<AnnotationEditorSheet> {
     );
 
     final existing = widget.existing;
+    String? annotationId;
     if (existing == null) {
+      annotationId = 'an-${DateTime.now().microsecondsSinceEpoch}';
       await _db.annotationsDao.insertOne(
         AnnotationsCompanion.insert(
-          id: 'an-${DateTime.now().microsecondsSinceEpoch}',
+          id: annotationId,
           interviewId: widget.interviewId,
           segmentId: Value(widget.segmentId),
           tag: isCustom ? 'custom' : key,
@@ -204,9 +219,36 @@ class _AnnotationEditorSheetState extends ConsumerState<AnnotationEditorSheet> {
         );
       }
     } else {
+      annotationId = existing.id;
       await _db.annotationsDao.updateOne(existing.id, companion);
     }
+
+    // PRD 2.7：从标注中提取问题卡片（幂等，重复生成更新原卡）
+    Flashcard? card;
+    if (createCard) {
+      final saved = await _db.annotationsDao.getById(annotationId);
+      if (saved != null) {
+        try {
+          card = await ref
+              .read(flashcardServiceProvider)
+              .createOrUpdateFromAnnotation(saved);
+        } on Exception catch (e) {
+          messenger.showSnackBar(SnackBar(content: Text('生成卡片失败：$e')));
+        }
+      }
+    }
+
     if (mounted) Navigator.of(context).pop();
+    if (card != null) {
+      // 已捕获的 app 级 messenger/router 在弹层卸载后仍可用
+      messenger.showSnackBar(SnackBar(
+        content: const Text('已生成问题卡片'),
+        action: SnackBarAction(
+          label: '查看',
+          onPressed: () => appRouter.push('/cards/${card!.id}'),
+        ),
+      ));
+    }
   }
 
   Future<void> _deleteAnnotation() async {

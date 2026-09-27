@@ -23,6 +23,9 @@ class AnnotationsDao extends DatabaseAccessor<AppDatabase>
 
   Future<List<Annotation>> getAll() => select(annotations).get();
 
+  Future<Annotation?> getById(String id) =>
+      (select(annotations)..where((t) => t.id.equals(id))).getSingleOrNull();
+
   Future<List<Annotation>> getByInterview(String interviewId) {
     return (select(annotations)
           ..where((t) => t.interviewId.equals(interviewId))

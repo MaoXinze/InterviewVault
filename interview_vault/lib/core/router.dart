@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/flashcards/presentation/flashcard_detail_page.dart';
 import '../features/home/presentation/home_page.dart';
 import '../features/api_key/presentation/api_key_page.dart';
 import '../features/import/presentation/import_page.dart';
@@ -72,6 +73,12 @@ final appRouter = GoRouter(
       path: '/interviews/:id',
       builder: (context, state) => InterviewDetailPage(
         interviewId: state.pathParameters['id']!,
+      ),
+    ),
+    GoRoute(
+      path: '/cards/:id',
+      builder: (context, state) => FlashcardDetailPage(
+        cardId: state.pathParameters['id']!,
       ),
     ),
     GoRoute(

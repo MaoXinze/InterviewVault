@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/motion.dart';
 import '../../../core/providers.dart';
@@ -133,6 +134,7 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
                               index: index,
                               child: Card(
                                 child: ListTile(
+                                  key: Key('review_card_${card.id}'),
                                   title: Text(card.question),
                                   subtitle: cardTags.isEmpty
                                       ? null
@@ -145,6 +147,8 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
                                               .labelSmall,
                                         )
                                       : null,
+                                  onTap: () =>
+                                      context.push('/cards/${card.id}'),
                                 ),
                               ),
                             );

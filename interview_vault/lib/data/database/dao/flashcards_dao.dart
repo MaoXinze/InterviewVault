@@ -24,6 +24,12 @@ class FlashcardsDao extends DatabaseAccessor<AppDatabase>
   Future<Flashcard?> getById(String id) =>
       (select(flashcards)..where((t) => t.id.equals(id))).getSingleOrNull();
 
+  /// 卡片详情页实时刷新
+  Stream<Flashcard?> watchById(String id) {
+    return (select(flashcards)..where((t) => t.id.equals(id)))
+        .watchSingleOrNull();
+  }
+
   Future<List<Flashcard>> getAll() => select(flashcards).get();
 
   Future<List<Flashcard>> getByInterview(String interviewId) {

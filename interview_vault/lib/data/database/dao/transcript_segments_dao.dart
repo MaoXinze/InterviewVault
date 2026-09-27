@@ -42,6 +42,10 @@ class SegmentsDao extends DatabaseAccessor<AppDatabase>
 
   Future<List<TranscriptSegment>> getAll() => select(transcriptSegments).get();
 
+  Future<TranscriptSegment?> getById(String id) =>
+      (select(transcriptSegments)..where((t) => t.id.equals(id)))
+          .getSingleOrNull();
+
   /// 按 start_time 升序
   Future<List<TranscriptSegment>> getByInterview(String interviewId) {
     return (select(transcriptSegments)
