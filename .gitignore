@@ -56,3 +56,4 @@ secrets/
 # ZCode session-local plan cache
 .zcode/plans/
 .superpowers/
+interview_vault/android/.kotlin/

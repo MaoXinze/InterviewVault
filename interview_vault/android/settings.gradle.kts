@@ -26,6 +26,10 @@ dependencyResolutionManagement {
     repositories {
         maven("https://maven.aliyun.com/repository/google")
         maven("https://maven.aliyun.com/repository/public")
+        // Flutter 引擎产物（flutter_embedding_debug 等，版本号为引擎 hash）。
+        // PREFER_SETTINGS 会忽略 Flutter 插件在项目级声明的 download.flutter.io
+        // 仓库，必须在这里显式补上（国内走 flutter-io.cn 镜像）。
+        maven("https://storage.flutter-io.cn/download.flutter.io")
         google()
         mavenCentral()
     }
