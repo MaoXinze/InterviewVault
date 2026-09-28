@@ -96,6 +96,80 @@ class _StaggeredItemState extends State<StaggeredItem> {
   }
 }
 
+/// 磁吸按压（模式① Magnetic Attraction，主 CTA 专用）：
+/// 按住拖动时按钮向指尖微移（≤6px），松手弹回（spring）。
+///
+/// 磁吸纪律（对应设计规范）：只用于大面积主按钮，不用于纯文本/小按钮；
+/// 位移走 Transform 不动布局；用 Listener 原始指针事件实现——
+/// 不参与手势竞技场，绝不劫持点击；松手必有回弹出口。
+class MagneticPress extends StatefulWidget {
+  const MagneticPress({
+    super.key,
+    required this.child,
+    this.maxOffset = 6,
+  });
+
+  final Widget child;
+
+  /// 最大吸附位移（px）：磁而不晃，方向始终朝指尖
+  final double maxOffset;
+
+  @override
+  State<MagneticPress> createState() => _MagneticPressState();
+}
+
+class _MagneticPressState extends State<MagneticPress> {
+  Offset _offset = Offset.zero;
+  bool _pressed = false;
+
+  void _follow(Offset localPosition) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final center = box.size.center(Offset.zero);
+    // 只取 22% 距离：被吸向指尖但永远吸不满，保持"引力"感
+    setState(() {
+      _offset = Offset(
+        (localPosition.dx - center.dx) * 0.22,
+        (localPosition.dy - center.dy) * 0.22,
+      );
+      // 逐轴钳制：按钮不脱手
+      _offset = Offset(
+        _offset.dx.clamp(-widget.maxOffset, widget.maxOffset),
+        _offset.dy.clamp(-widget.maxOffset, widget.maxOffset),
+      );
+    });
+  }
+
+  void _release() {
+    setState(() {
+      _pressed = false;
+      _offset = Offset.zero;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (prefersReducedMotion(context)) return widget.child;
+    return Listener(
+      onPointerDown: (event) {
+        _pressed = true;
+        _follow(event.localPosition);
+      },
+      onPointerMove: (event) {
+        if (_pressed) _follow(event.localPosition);
+      },
+      onPointerUp: (_) => _release(),
+      onPointerCancel: (_) => _release(),
+      child: AnimatedContainer(
+        duration: _pressed ? Duration.zero : Motion.fast,
+        curve: Motion.spring,
+        transform: Matrix4.translationValues(_offset.dx, _offset.dy, 0),
+        transformAlignment: Alignment.center,
+        child: widget.child,
+      ),
+    );
+  }
+}
 /// 数字滚动：数值变化时从旧值滚到新值（Duolingo 式计数）。
 class CountUpText extends StatelessWidget {
   const CountUpText(this.value, {super.key, this.style});

@@ -12,6 +12,9 @@ abstract final class Motion {
   /// 大面积变化：主题圆形扩散、卡片飞出
   static const Duration slow = Duration(milliseconds: 400);
 
+  /// 手势驱动：卡片堆飞出/落位/回弹（跟手，短于 slow）
+  static const Duration swipe = Duration(milliseconds: 300);
+
   /// 主曲线：先快后缓
   static const Curve emphasized = Curves.easeOutCubic;
 
