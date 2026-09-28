@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- 复习完成：奖牌 + 五角星 + 光环 + 缎带 -->
+  <circle cx="60" cy="54" r="30" stroke="#000000" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="2 9"/>
+  <circle cx="60" cy="54" r="21" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M60 43 L63.2 51.6 L72.4 52 L65.2 57.7 L67.6 66.5 L60 61.5 L52.4 66.5 L54.8 57.7 L47.6 52 L56.8 51.6 Z" stroke="#000000" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 52 72 L 45 105 L 57 96.5 L 60 76" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 68 72 L 75 105 L 63 96.5 L 60 76" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 22 26 L 22 36 M 17 31 L 27 31" stroke="#000000" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 100 34 L 100 44 M 95 39 L 105 39" stroke="#000000" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 96 14 L 96 20 M 93 17 L 99 17" stroke="#000000" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- 问题卡：主气泡 + 问号，旁侧小气泡回应 -->
+  <rect x="14" y="16" width="74" height="52" rx="14" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 34 68 L 34 86 L 52 68" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 43 41 C 43 30 63 30 63 41 C 63 48 53 47 53 56" stroke="#000000" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="53" cy="64.5" r="2.8" fill="#000000"/>
+  <rect x="94" y="26" width="17" height="13" rx="5" stroke="#000000" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="99.5" cy="32.5" r="1.6" fill="#000000"/>
+  <circle cx="105.5" cy="32.5" r="1.6" fill="#000000"/>
+  <path d="M 100 84 L 100 92 M 96 88 L 104 88" stroke="#000000" stroke-width="3" stroke-linecap="round"/>
+</svg>
