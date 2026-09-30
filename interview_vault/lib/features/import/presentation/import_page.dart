@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/format.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/illustration.dart';
 import '../../../core/widgets/motion.dart';
 import '../../../data/database/app_database.dart';
 import '../audio_import_service.dart';
@@ -127,7 +128,7 @@ class _EmptyPick extends StatelessWidget {
               ),
             ],
           ),
-          child: const Icon(Icons.library_music, color: AppTheme.gold, size: 44),
+          child: const CardIllustration.mic(size: 52),
         ),
         const SizedBox(height: 24),
         Text(

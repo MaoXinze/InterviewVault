@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/illustration.dart';
 import '../mock_interview_service.dart';
 
 /// 模拟面试配置页（PRD 2.9）：岗位方向 + 简历（粘贴文字/PDF 导入）+ JD
@@ -145,11 +146,19 @@ class _MockSetupPageState extends ConsumerState<MockSetupPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            'AI 面试官将根据以下信息出 5 道题，逐题作答后生成复盘卡片',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+          Row(
+            children: [
+              const CardIllustration.coach(size: 44),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'AI 面试官将根据以下信息出 5 道题，逐题作答后生成复盘卡片',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           TextField(

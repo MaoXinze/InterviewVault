@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/format.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/illustration.dart';
 import '../../../data/database/app_database.dart';
 import '../../interviews/annotation_tags.dart';
 import '../flashcard_service.dart';
@@ -290,11 +291,19 @@ class _FlashcardDetailPageState extends ConsumerState<FlashcardDetailPage> {
                   style: Theme.of(context).textTheme.bodyMedium,
                 )
               else
-                Text(
-                  '生成这道题的参考答案思路（AI 调用由你的账户扣费）',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
+                Row(
+                  children: [
+                    const CardIllustration.bulb(size: 40),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '生成这道题的参考答案思路（AI 调用由你的账户扣费）',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
                       ),
+                    ),
+                  ],
                 ),
             ],
           ],

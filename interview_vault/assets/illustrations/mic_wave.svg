@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- 录音导入：麦克风 + 右侧声波 -->
+  <rect x="48" y="14" width="24" height="44" rx="12" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M36 42 c0 14 10 24 24 24 s24-10 24-24" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M60 66 v12" stroke="#000000" stroke-width="4" stroke-linecap="round"/>
+  <path d="M46 78 h28" stroke="#000000" stroke-width="4" stroke-linecap="round"/>
+  <path d="M84 34 c9 3 9 15 0 18" stroke="#000000" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M94 26 c13 5 13 29 0 34" stroke="#000000" stroke-width="3.5" stroke-linecap="round"/>
+  <circle cx="30" cy="56" r="2.4" fill="#000000"/>
+  <path d="M30 20 v8 M26 24 h8" stroke="#000000" stroke-width="3" stroke-linecap="round"/>
+</svg>

@@ -146,6 +146,9 @@ void main() {
       final service = _FakeMockService();
       await pumpMockFlow(tester, service: service);
 
+      // 头图与三个输入框之下，CTA 在小视口可折叠进滚动区：先滚到再点（真实用户同款路径）
+      await tester.ensureVisible(find.byKey(const Key('btn_generate_questions')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('btn_generate_questions')));
       await tester.pump();
 
@@ -163,6 +166,9 @@ void main() {
       await tester.enterText(
           find.byKey(const Key('mock_resume_field')), '三年 Flutter 经验');
       await tester.enterText(find.byKey(const Key('mock_jd_field')), '负责 App 架构');
+      // 头图与三个输入框之下，CTA 在小视口可折叠进滚动区：先滚到再点（真实用户同款路径）
+      await tester.ensureVisible(find.byKey(const Key('btn_generate_questions')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('btn_generate_questions')));
       await tester.pumpAndSettle();
 

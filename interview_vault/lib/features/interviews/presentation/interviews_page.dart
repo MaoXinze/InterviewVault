@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme.dart';
 import '../../../core/widgets/arc_dismiss.dart';
+import '../../../core/widgets/illustration.dart';
 import '../../../core/widgets/motion.dart';
 import '../../../data/database/app_database.dart';
 
@@ -88,10 +89,8 @@ class _InterviewsPageState extends ConsumerState<InterviewsPage> {
                                         .withValues(alpha: 0.6),
                                   ),
                                 ),
-                                child: const Icon(
-                                  Icons.work_outline,
-                                  color: AppTheme.gold,
-                                  size: 32,
+                                child: const CardIllustration.interviews(
+                                  size: 44,
                                 ),
                               ),
                             ],

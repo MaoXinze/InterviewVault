@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- 模拟面试教练：带问号的大气泡 + 带对勾的小气泡 + 星花 -->
+  <rect x="12" y="16" width="70" height="50" rx="14" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M30 66 L30 84 L48 66" stroke="#000000" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M38 36 C38 25 58 25 58 34 C58 41 48 40 48 49" stroke="#000000" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="48" cy="57" r="2.8" fill="#000000"/>
+  <rect x="88" y="30" width="20" height="17" rx="6" stroke="#000000" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M94 47 v7 l8-7" stroke="#000000" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M92 38 l3.5 3.5 L102 34" stroke="#000000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M100 76 v10 M95 81 h10" stroke="#000000" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="24" cy="96" r="2.2" fill="#000000"/>
+</svg>

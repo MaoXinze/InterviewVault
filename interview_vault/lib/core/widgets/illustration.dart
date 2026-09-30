@@ -17,6 +17,22 @@ class CardIllustration extends StatelessWidget {
   const CardIllustration.done({super.key, this.size = 88, this.opacity})
       : _asset = 'assets/illustrations/review_done.svg';
 
+  /// 面试列表空态：公文包 + 弹出的题卡
+  const CardIllustration.interviews({super.key, this.size = 88, this.opacity})
+      : _asset = 'assets/illustrations/empty_interviews.svg';
+
+  /// 模拟面试：出题教练气泡
+  const CardIllustration.coach({super.key, this.size = 88, this.opacity})
+      : _asset = 'assets/illustrations/mock_coach.svg';
+
+  /// 录音/导入：麦克风 + 声波
+  const CardIllustration.mic({super.key, this.size = 88, this.opacity})
+      : _asset = 'assets/illustrations/mic_wave.svg';
+
+  /// AI 参考思路：灯泡
+  const CardIllustration.bulb({super.key, this.size = 88, this.opacity})
+      : _asset = 'assets/illustrations/idea_bulb.svg';
+
   final String _asset;
 
   /// 边长（正方形 viewBox 120）
