@@ -21,6 +21,7 @@ import '../features/settings/presentation/settings_page.dart';
 import '../features/transcription/presentation/model_manage_page.dart';
 import 'motion.dart';
 import 'theme.dart';
+import 'widgets/brand_icon.dart';
 import 'widgets/motion.dart';
 
 /// 四 Tab + 中央 ⏺（AGENTS 命名铁律：首页 / 面试 / ⏺ / 回顾 / 我的）。
@@ -187,16 +188,14 @@ class AppShell extends StatelessWidget {
           children: [
             _TabItem(
               key: const Key('tab_home'),
-              icon: Icons.home_outlined,
-              activeIcon: Icons.home,
+              icon: 'nav_home',
               label: '首页',
               selected: navigationShell.currentIndex == 0,
               onTap: () => _goBranch(0),
             ),
             _TabItem(
               key: const Key('tab_interviews'),
-              icon: Icons.work_outline,
-              activeIcon: Icons.work,
+              icon: 'nav_interviews',
               label: '面试',
               selected: navigationShell.currentIndex == 1,
               onTap: () => _goBranch(1),
@@ -204,16 +203,14 @@ class AppShell extends StatelessWidget {
             const SizedBox(width: 56),
             _TabItem(
               key: const Key('tab_review'),
-              icon: Icons.style_outlined,
-              activeIcon: Icons.style,
+              icon: 'nav_review',
               label: '回顾',
               selected: navigationShell.currentIndex == 2,
               onTap: () => _goBranch(2),
             ),
             _TabItem(
               key: const Key('tab_settings'),
-              icon: Icons.person_outline,
-              activeIcon: Icons.person,
+              icon: 'nav_me',
               label: '我的',
               selected: navigationShell.currentIndex == 3,
               onTap: () => _goBranch(3),
@@ -229,14 +226,13 @@ class _TabItem extends StatelessWidget {
   const _TabItem({
     super.key,
     required this.icon,
-    required this.activeIcon,
     required this.label,
     required this.selected,
     required this.onTap,
   });
 
-  final IconData icon;
-  final IconData activeIcon;
+  /// 品牌线稿图标资产名（assets/icons/，BrandIcon 渲染）
+  final String icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -265,8 +261,7 @@ class _TabItem extends StatelessWidget {
                   scale: selected ? 1.15 : 1.0,
                   duration: Motion.fast,
                   curve: selected ? Motion.spring : Motion.emphasized,
-                  child: Icon(selected ? activeIcon : icon,
-                      color: color, size: 24),
+                  child: BrandIcon(icon, color: color, size: 24),
                 ),
                 const SizedBox(height: 4),
                 Text(

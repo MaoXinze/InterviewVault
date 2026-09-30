@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/brand_icon.dart';
 import '../../../core/widgets/motion.dart';
 import '../../mock/presentation/mock_setup_page.dart';
 
@@ -31,19 +32,19 @@ class HomePage extends ConsumerWidget {
               child: Row(
                 children: [
                   _QuickAction(
-                    icon: Icons.mic,
+                    icon: 'qa_mic',
                     label: '新录音',
                     onTap: () => context.push('/record'),
                   ),
                   const SizedBox(width: 12),
                   _QuickAction(
-                    icon: Icons.upload_file,
+                    icon: 'qa_import',
                     label: '导入音频',
                     onTap: () => context.push('/import'),
                   ),
                   const SizedBox(width: 12),
                   _QuickAction(
-                    icon: Icons.psychology,
+                    icon: 'qa_mock',
                     label: '模拟面试',
                     onTap: () =>
                         MockSetupPage.enterMockInterview(context, ref),
@@ -275,7 +276,8 @@ class _QuickAction extends StatelessWidget {
     required this.onTap,
   });
 
-  final IconData icon;
+  /// 品牌线稿图标资产名（assets/icons/）
+  final String icon;
   final String label;
   final VoidCallback onTap;
 
@@ -292,7 +294,7 @@ class _QuickAction extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Column(
                 children: [
-                  Icon(icon, color: colorScheme.primary, size: 28),
+                  BrandIcon(icon, color: colorScheme.primary, size: 28),
                   const SizedBox(height: 8),
                   Text(label, style: Theme.of(context).textTheme.bodyMedium),
                 ],
