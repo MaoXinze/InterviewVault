@@ -359,6 +359,51 @@ void main() {
       );
     });
   });
+
+  group('提示词 v2（更详细、人话）', () {
+    test('出题：要求贴合简历/JD 细节追问，口语自然', () async {
+      nextChatClient = Future.value(_client((_) => _sseChunks([
+            ['["一题"]'],
+          ])));
+      await service.generateQuestions(position: '客户端工程师');
+
+      final adapter =
+          (await nextChatClient)!.dio.httpClientAdapter as _CapturingAdapter;
+      final messages =
+          (adapter.requests.single.data as Map)['messages'] as List;
+      final system = messages
+          .where((m) => m['role'] == 'system')
+          .map((m) => m['content'])
+          .join();
+      expect(system, contains('JSON 字符串数组'));
+      expect(system, contains('追问'));
+    });
+
+    test('逐题反馈：三节结构 + 扣原话点评 + 可照做的示范话术', () async {
+      LlmClient? client;
+      nextChatClient = Future.value(client = _client(
+        (_) => _sseChunks([['【优点】不错']]),
+      ));
+      await service
+          .generateFeedback(question: '介绍项目', answer: '我做了一款 App')
+          .toList();
+
+      final adapter = client!.dio.httpClientAdapter as _CapturingAdapter;
+      final messages =
+          (adapter.requests.single.data as Map)['messages'] as List;
+      final system = messages
+          .where((m) => m['role'] == 'system')
+          .map((m) => m['content'])
+          .join();
+      expect(system, contains('【优点】'));
+      expect(system, contains('【不足】'));
+      expect(system, contains('【改进建议】'));
+      // 改进要能直接照做：给改写后的示范话术
+      expect(system, contains('示范话术'));
+      // 人话铁律：像学长复盘，不要端着的书面腔
+      expect(system, contains('学长'));
+    });
+  });
 }
 
 /// 从打桩的 LlmClient 中取出最近一次请求的 user 消息，断言提示词内容用。

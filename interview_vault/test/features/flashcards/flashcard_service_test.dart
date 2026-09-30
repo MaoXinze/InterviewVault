@@ -300,5 +300,35 @@ void main() {
       expect((events.single as CardAiError).message, contains('未配置'));
       expect(factoryCalls, 1);
     });
+
+    test('提示词 v2：系统提示要求分节讲重点 + 可背的示范话术', () async {
+      final card = await seedCard();
+      final client = clientWith((_) => _sseChunks([['好的']]));
+      nextChatClient = Future.value(client);
+
+      await service.generateAiReference(card).toList();
+
+      final system = _capturedMessages(client)
+          .where((m) => m['role'] == 'system')
+          .map((m) => m['content'])
+          .join();
+      // 分节结构：先讲考察什么，再给框架和要点，最后给能直接背的话术
+      expect(system, contains('【考察点】'));
+      expect(system, contains('【答题框架】'));
+      expect(system, contains('【关键要点】'));
+      expect(system, contains('【加分示范】'));
+      // 人话铁律：像学长讲解、短句口语，而不是端着的书面腔
+      expect(system, contains('学长'));
+    });
   });
+}
+
+/// 取出打桩适配器捕获的最近一次请求的 messages。
+List<Map<String, dynamic>> _capturedMessages(LlmClient client) {
+  final adapter = client.dio.httpClientAdapter as _CapturingAdapter;
+  final data = adapter.requests.single.data;
+  return [
+    for (final m in (data as Map)['messages'] as List)
+      (m as Map).cast<String, dynamic>(),
+  ];
 }
