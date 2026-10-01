@@ -24,6 +24,9 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
   return db;
 });
 
+/// 开屏（品牌瞬间）开关；组件测试关闭以免覆盖被测页面内容。
+final splashEnabledProvider = Provider<bool>((ref) => true);
+
 /// KeyStorage：API Key 唯一读写入口（flutter_secure_storage 封装）。
 final keyStorageProvider = Provider<KeyStorage>((ref) => KeyStorage());
 

@@ -47,6 +47,8 @@ Future<AppDatabase> pumpInterviewVaultApp(
     ProviderScope(
       overrides: [
         appDatabaseProvider.overrideWithValue(db),
+        // 开屏会盖住被测页面：组件测试一律关闭（开屏行为见 splash_test）
+        splashEnabledProvider.overrideWithValue(false),
         keyStorageProvider
             .overrideWithValue(keyStorage ?? FakeKeyStorage()),
         if (recorder != null) recorderServiceProvider.overrideWithValue(recorder),
