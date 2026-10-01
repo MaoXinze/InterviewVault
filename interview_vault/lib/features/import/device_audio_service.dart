@@ -1,4 +1,4 @@
-import 'package:on_audio_query/on_audio_query.dart';
+import 'package:flutter/services.dart';
 
 /// 本机音频读取授权状态。
 enum DeviceAudioPermission { granted, denied }
@@ -15,7 +15,7 @@ class DeviceAudio {
     this.addedAt,
   });
 
-  /// MediaStore 物理路径（Android 11+ 授予媒体读权限后可直接按路径读取）
+  /// MediaStore 物理路径（授予权限后可直接按路径读取）
   final String path;
 
   /// 展示名（带扩展名的文件名，最贴近"找文件"的心智）
@@ -30,21 +30,24 @@ class DeviceAudio {
   final DateTime? addedAt;
 }
 
-/// 本机音频浏览服务：MediaStore 查询 + 音频媒体权限。
-/// 全程本机，不上传任何内容（PRD 铁律）。
+/// 本机音频浏览服务：经 "device_audio" MethodChannel 查 MediaStore
+/// + 管理音频媒体权限。全程本机，不上传任何内容（PRD 铁律）。
 class DeviceAudioService {
-  DeviceAudioService({OnAudioQuery? query}) : _query = query ?? OnAudioQuery();
+  DeviceAudioService({MethodChannel? channel})
+      : _channel = channel ??
+            const MethodChannel('device_audio');
 
-  final OnAudioQuery _query;
+  final MethodChannel _channel;
 
-  /// 检查并请求音频媒体权限（READ_MEDIA_AUDIO / 旧版 READ_EXTERNAL_STORAGE）。
-  /// 平台不支持（测试环境/无插件实现）时返回 denied，由 UI 引导。
+  /// 检查并请求音频媒体读权限（READ_MEDIA_AUDIO / 旧版 READ_EXTERNAL_STORAGE）。
+  /// 平台不支持（测试环境/无宿主实现）时返回 denied，由 UI 引导。
   Future<DeviceAudioPermission> ensurePermission() async {
     try {
-      if (await _query.permissionsStatus()) {
+      if (await _channel.invokeMethod<bool>('permissionStatus') ?? false) {
         return DeviceAudioPermission.granted;
       }
-      final granted = await _query.permissionsRequest();
+      final granted =
+          await _channel.invokeMethod<bool>('requestPermission') ?? false;
       return granted
           ? DeviceAudioPermission.granted
           : DeviceAudioPermission.denied;
@@ -54,27 +57,26 @@ class DeviceAudioService {
   }
 
   /// 全部本机音频，按加入媒体库时间倒序（最近的排最前）。
-  /// 查询失败返回空列表（UI 走"没找到"空态，仍可用系统选择器兜底）。
+  /// 未授权/查询失败返回空列表（UI 走"没找到"空态，仍可用系统选择器兜底）。
   Future<List<DeviceAudio>> listAudios() async {
     try {
-      final songs = await _query.querySongs(
-        sortType: SongSortType.DATE_ADDED,
-        orderType: OrderType.DESC_OR_GREATER,
-        uriType: UriType.EXTERNAL,
+      final rows = await _channel.invokeListMethod<Map<dynamic, dynamic>>(
+        'listAudios',
       );
       return [
-        for (final song in songs)
-          if (song.data.isNotEmpty)
-            DeviceAudio(
-              path: song.data,
-              title: song.displayName,
-              sizeBytes: song.size,
-              album: song.album,
-              durationMs: song.duration,
-              addedAt: song.dateAdded == null
-                  ? null
-                  : DateTime.fromMillisecondsSinceEpoch(song.dateAdded! * 1000),
-            ),
+        for (final row in rows ?? const <Map<dynamic, dynamic>>[])
+          DeviceAudio(
+            path: row['path'] as String,
+            title: (row['title'] as String?) ?? '未命名音频',
+            sizeBytes: (row['sizeBytes'] as num?)?.toInt() ?? 0,
+            album: row['album'] as String?,
+            durationMs: (row['durationMs'] as num?)?.toInt(),
+            addedAt: row['addedAtSec'] == null
+                ? null
+                : DateTime.fromMillisecondsSinceEpoch(
+                    (row['addedAtSec'] as num).toInt() * 1000,
+                  ),
+          ),
       ];
     } catch (_) {
       return const [];

@@ -70,8 +70,6 @@ dependencies:
   syncfusion_flutter_pdf: ^34.2.9
   share_plus: ^13.3.0
   flutter_svg: ^2.3.0
-  on_audio_query: ^2.9.0
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
