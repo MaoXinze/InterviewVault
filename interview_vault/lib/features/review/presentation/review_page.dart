@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/motion.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/illustration.dart';
 import '../../../core/widgets/motion.dart';
 import '../../../data/database/app_database.dart';
 import 'flashcard_flip_page.dart';
@@ -142,6 +143,24 @@ class _ReviewPageState extends ConsumerState<ReviewPage> {
                               child: Card(
                                 child: ListTile(
                                   key: Key('review_card_${card.id}'),
+                                  // 品牌徽标：鎏金题卡线稿，让列表行一眼认出"这是题卡"
+                                  leading: Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .surfaceContainerLow,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: AppTheme.gold
+                                            .withValues(alpha: 0.35),
+                                      ),
+                                    ),
+                                    child: const Center(
+                                      child: CardIllustration.question(size: 26),
+                                    ),
+                                  ),
                                   title: Text(card.question),
                                   subtitle: cardTags.isEmpty
                                       ? null

@@ -121,11 +121,30 @@ class _FlashcardDetailPageState extends ConsumerState<FlashcardDetailPage> {
     );
   }
 
-  Widget _buildQuestion(Flashcard card) {
+  /// 区块卡 + 右上角鎏金水印插画（与翻卡页同一套设计词汇）
+  Widget _sectionCard({required Widget child, CardIllustration? watermark}) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: Stack(
+          children: [
+            if (watermark != null)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: IgnorePointer(child: watermark),
+              ),
+            SizedBox(width: double.infinity, child: child),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuestion(Flashcard card) {
+    return _sectionCard(
+      watermark: const CardIllustration.question(opacity: 0.12),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _sectionHeader(
@@ -156,15 +175,13 @@ class _FlashcardDetailPageState extends ConsumerState<FlashcardDetailPage> {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildAnswer(Flashcard card) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+    return _sectionCard(
+      watermark: const CardIllustration.answer(opacity: 0.10),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _sectionHeader(
@@ -201,8 +218,7 @@ class _FlashcardDetailPageState extends ConsumerState<FlashcardDetailPage> {
               ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildAnnotations(Flashcard card) {
@@ -249,10 +265,9 @@ class _FlashcardDetailPageState extends ConsumerState<FlashcardDetailPage> {
 
   Widget _buildAiReference(Flashcard card) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+    return _sectionCard(
+      watermark: const CardIllustration.bulb(opacity: 0.14),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _sectionHeader(
@@ -308,8 +323,7 @@ class _FlashcardDetailPageState extends ConsumerState<FlashcardDetailPage> {
             ],
           ],
         ),
-      ),
-    );
+      );
   }
 
   String _aiBuffer = '';

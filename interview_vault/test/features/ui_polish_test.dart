@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:interview_vault/core/widgets/illustration.dart';
 import 'package:interview_vault/data/database/app_database.dart';
 
 import '../helpers/pump_app.dart';
@@ -45,6 +46,36 @@ void main() {
     expect(find.text('开始回顾'), findsOneWidget);
     expect(find.byKey(const Key('tag_chip_全部')), findsOneWidget);
     expect(find.byKey(const Key('tag_chip_亮点')), findsOneWidget);
+
+    await drainAppTimers(tester);
+  });
+
+  testWidgets('回顾列表卡片带品牌徽标（鎏金题卡插画）', (tester) async {
+    final db = await pumpInterviewVaultApp(tester);
+    addTearDown(db.close);
+
+    await db.interviewsDao.insertOne(
+      InterviewsCompanion.insert(id: 'iv-root'),
+    );
+    await db.flashcardsDao.insertOne(
+      FlashcardsCompanion.insert(
+        id: 'fc-1',
+        interviewId: 'iv-root',
+        question: '什么是洋葱模型？',
+        tags: Value(encodeCardTags(['亮点'])),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('tab_review')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('review_card_fc-1')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('review_card_fc-1')),
+        matching: find.byType(CardIllustration),
+      ),
+      findsOneWidget,
+    );
 
     await drainAppTimers(tester);
   });

@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:interview_vault/core/providers.dart';
 import 'package:interview_vault/core/router.dart';
+import 'package:interview_vault/core/widgets/illustration.dart';
 import 'package:interview_vault/data/database/app_database.dart';
 import 'package:interview_vault/features/flashcards/flashcard_service.dart';
 import 'package:interview_vault/features/flashcards/presentation/flashcard_detail_page.dart';
@@ -143,6 +144,15 @@ void main() {
       expect(find.byKey(const Key('card_annotation_an-q')), findsOneWidget);
       expect(find.byKey(const Key('card_annotation_an-h')), findsOneWidget);
       expect(find.text('这段讲得有数据支撑'), findsOneWidget);
+      await drainAppTimers(tester);
+    });
+
+    testWidgets('问题/回答/AI 思路三区块带鎏金水印插画', (tester) async {
+      await seedCardData();
+      await pumpCardDetail(tester);
+
+      // 问题水印 + 回答水印 + AI 区块水印 + AI 空态提示行灯泡
+      expect(find.byType(CardIllustration), findsNWidgets(4));
       await drainAppTimers(tester);
     });
 
