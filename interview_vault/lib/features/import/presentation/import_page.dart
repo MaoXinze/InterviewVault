@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,9 +12,11 @@ import '../../../core/widgets/illustration.dart';
 import '../../../core/widgets/motion.dart';
 import '../../../data/database/app_database.dart';
 import '../audio_import_service.dart';
+import '../device_audio_service.dart';
 
-/// 音频导入（W2-M2，PRD 2.3）：选文件 → 展示时长/大小/格式 → 确认后
-/// 复制进库目录并落一条草稿面试记录。全程本地，不上传。
+/// 音频导入（W2-M2，PRD 2.3）：本机音频列表（MediaStore）点选 → 展示
+/// 时长/大小/格式 → 确认后复制进库目录并落一条草稿面试记录。
+/// 系统文件选择器保留为兜底入口。全程本地，不上传。
 class ImportPage extends ConsumerStatefulWidget {
   const ImportPage({super.key});
 
@@ -21,17 +25,65 @@ class ImportPage extends ConsumerStatefulWidget {
 }
 
 class _ImportPageState extends ConsumerState<ImportPage> {
+  /// null = 加载中；denied = 权限被拒（引导态）
+  DeviceAudioPermission? _permission;
+  List<DeviceAudio>? _audios;
+  String _query = '';
   ImportedAudioInfo? _info;
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
-    // 进入即唤起系统选择器；取消则留在选择态，可再次手动选择
-    WidgetsBinding.instance.addPostFrameCallback((_) => _pick());
+    _loadAudios();
   }
 
-  Future<void> _pick() async {
+  Future<void> _loadAudios() async {
+    setState(() => _permission = null);
+    final service = ref.read(deviceAudioServiceProvider);
+    final permission = await service.ensurePermission();
+    List<DeviceAudio>? audios;
+    if (permission == DeviceAudioPermission.granted) {
+      audios = await service.listAudios();
+    }
+    if (!mounted) return;
+    setState(() {
+      _permission = permission;
+      _audios = audios;
+    });
+  }
+
+  /// 从本机列表点选 → 直接探测格式信息（无需经系统选择器）
+  Future<void> _pickFromDevice(DeviceAudio audio) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final service = ref.read(audioImportServiceProvider);
+      // 双分隔符兜底：Android 路径为 /，Windows 测试宿主为 \
+      final fileName =
+          audio.path.split('/').last.split(Platform.pathSeparator).last;
+      final info = await service.inspect(
+        PickedAudio(
+          path: audio.path,
+          fileName: fileName,
+          sizeBytes: audio.sizeBytes,
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _info = info;
+        _busy = false;
+      });
+    } on Exception {
+      if (mounted) {
+        setState(() => _busy = false);
+        _showSnack('读取文件失败，请重试');
+      }
+    }
+  }
+
+  /// 系统文件选择器兜底（SAF，覆盖媒体库之外的目录）
+  Future<void> _pickViaSystem() async {
     if (_busy) return;
     setState(() => _busy = true);
     try {
@@ -40,7 +92,10 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       if (picked == null) return;
       final info = await service.inspect(picked);
       if (!mounted) return;
-      setState(() => _info = info);
+      setState(() {
+        _info = info;
+        _busy = false;
+      });
     } on Exception {
       if (mounted) _showSnack('读取文件失败，请重试');
     } finally {
@@ -85,86 +140,207 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     return Scaffold(
       key: const Key('page_import'),
       appBar: AppBar(title: const Text('导入音频')),
-      body: Center(
-        child: _busy && info == null
-            ? const CircularProgressIndicator()
-            : info == null
-                ? _EmptyPick(onPick: _pick)
-                : _ConfirmCard(
-                    info: info,
-                    busy: _busy,
-                    onConfirm: _confirmImport,
-                    onPickAgain: _pick,
+      body: info != null
+          ? _ConfirmCard(
+              info: info,
+              busy: _busy,
+              onConfirm: _confirmImport,
+              onPickAgain: _pickViaSystem,
+            )
+          : _buildBrowser(context),
+    );
+  }
+
+  Widget _buildBrowser(BuildContext context) {
+    final permission = _permission;
+    if (permission == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (permission == DeviceAudioPermission.denied) {
+      return _PermissionGuide(onRequest: _loadAudios);
+    }
+    final audios = _audios ?? const <DeviceAudio>[];
+    final filtered = _query.isEmpty
+        ? audios
+        : audios
+            .where((a) => a.title.toLowerCase().contains(_query.toLowerCase()))
+            .toList();
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  key: const Key('field_import_search'),
+                  onChanged: (v) => setState(() => _query = v.trim()),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search),
+                    hintText: '搜索本机音频文件名',
+                    border: OutlineInputBorder(),
+                    isDense: true,
                   ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                key: const Key('btn_import_pick'),
+                onPressed: _busy ? null : _pickViaSystem,
+                icon: const Icon(Icons.folder_open, size: 18),
+                label: const Text('文件管理器'),
+              ),
+            ],
+          ),
+        ),
+        if (_busy) const LinearProgressIndicator(minHeight: 2),
+        Expanded(
+          child: audios.isEmpty
+              ? _EmptyBrowser(onSystemPick: _pickViaSystem)
+              : filtered.isEmpty
+                  ? Center(
+                      child: Text('没有匹配"$_query"的音频'),
+                    )
+                  : ListView.builder(
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final audio = filtered[index];
+                        final subtitle = [
+                          if (audio.album != null && audio.album!.isNotEmpty)
+                            audio.album!,
+                          if (audio.durationMs != null)
+                            formatClock(
+                              Duration(milliseconds: audio.durationMs!),
+                            ),
+                          formatFileSize(audio.sizeBytes),
+                        ].join(' · ');
+                        return ListTile(
+                          key: Key('device_audio_$index'),
+                          leading: const Icon(Icons.graphic_eq,
+                              color: AppTheme.gold),
+                          title: Text(
+                            audio.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => _pickFromDevice(audio),
+                        );
+                      },
+                    ),
+        ),
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            child: Text(
+              '列表来自本机媒体库，仅用于选择导入，全程不上传',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 媒体权限被拒：说明 + 去授权（重新触发系统弹窗）
+class _PermissionGuide extends StatelessWidget {
+  const _PermissionGuide({required this.onRequest});
+
+  final VoidCallback onRequest;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.folder_off_outlined,
+              size: 52,
+              color: AppTheme.gold,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              '需要"音频媒体"权限',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '用于列出本机音频供你直接点选导入，'
+              '免去在文件管理器里翻目录。列表只在 App 内使用，全程不上传。',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              key: const Key('btn_import_permission'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.gold,
+                foregroundColor: AppTheme.onGold,
+              ),
+              onPressed: onRequest,
+              icon: const Icon(Icons.verified_user_outlined),
+              label: const Text('去授权'),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// 尚未选择文件：入口引导
-class _EmptyPick extends StatelessWidget {
-  const _EmptyPick({required this.onPick});
+/// 本机没找到音频：空态引导（仍可走系统选择器）
+class _EmptyBrowser extends StatelessWidget {
+  const _EmptyBrowser({required this.onSystemPick});
 
-  final VoidCallback onPick;
+  final VoidCallback onSystemPick;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 96,
-          height: 96,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: colorScheme.surfaceContainerLow,
-            border: Border.all(color: AppTheme.gold, width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.gold.withValues(alpha: 0.18),
-                blurRadius: 24,
-                spreadRadius: 2,
-              ),
-            ],
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CardIllustration.mic(size: 64, opacity: 0.8),
+          const SizedBox(height: 16),
+          Text(
+            '本机没找到音频文件',
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
-          child: const CardIllustration.mic(size: 52),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          '选择一段面试录音',
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '支持 mp3 / wav / m4a / aac / ogg',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-        ),
-        const SizedBox(height: 28),
-        PressableScale(
-          onTap: onPick,
-          child: Container(
-            key: const Key('btn_import_pick'),
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-            decoration: BoxDecoration(
-              color: AppTheme.gold,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Text(
-              '选择文件',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppTheme.onGold,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
+          const SizedBox(height: 8),
+          Text(
+            '新录的音频会在导入后出现在这里',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
-        ),
-      ],
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+            onPressed: onSystemPick,
+            icon: const Icon(Icons.folder_open, size: 18),
+            label: const Text('从文件管理器选择'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -246,7 +422,9 @@ class _ConfirmCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
                   decoration: BoxDecoration(
-                    color: busy ? colorScheme.surfaceContainerHighest : AppTheme.gold,
+                    color: busy
+                        ? colorScheme.surfaceContainerHighest
+                        : AppTheme.gold,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Text(

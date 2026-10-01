@@ -3,6 +3,9 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- 录音（W2）：麦克风 + 前台服务（锁屏后台录音）+ 常驻通知 -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- 本机音频列表（导入页点选导入）：Android 13 细分媒体权限 + 旧版存储读 -->
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>

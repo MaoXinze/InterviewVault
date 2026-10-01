@@ -9,6 +9,7 @@ import '../features/export/data_management_service.dart';
 import '../features/export/markdown_export_service.dart';
 import '../features/flashcards/flashcard_service.dart';
 import '../features/import/audio_import_service.dart';
+import '../features/import/device_audio_service.dart';
 import '../features/interviews/audio_playback.dart';
 import '../features/mock/mock_interview_service.dart';
 import '../features/recording/recorder_service.dart';
@@ -85,6 +86,11 @@ final audioFileCleanerProvider = Provider<Future<void> Function(String?)>(
 /// 音频导入服务（W2-M2：系统选择器 → 格式确认 → 复制进库）。
 final audioImportServiceProvider = Provider<AudioImportService>(
   (ref) => AudioImportService(),
+);
+
+/// 本机音频浏览（MediaStore 列表 + 媒体权限），导入页免翻目录点选导入。
+final deviceAudioServiceProvider = Provider<DeviceAudioService>(
+  (ref) => DeviceAudioService(),
 );
 
 /// 本地转写模型网关（W2-M3：下载/校验/删除 ggml 模型）。

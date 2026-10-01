@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:interview_vault/core/providers.dart';
 import 'package:interview_vault/features/export/markdown_export_service.dart';
 import 'package:interview_vault/features/import/audio_import_service.dart';
+import 'package:interview_vault/features/import/device_audio_service.dart';
 import 'package:interview_vault/features/recording/recorder_service.dart';
 import 'package:interview_vault/data/database/app_database.dart';
 import 'package:interview_vault/data/secure/key_storage.dart';
@@ -30,6 +31,27 @@ class FakeKeyStorage extends Mock implements KeyStorage {
   Future<bool> has(String provider) async => store.containsKey('apikey.$provider');
 }
 
+/// 本机音频服务桩：不触碰 on_audio_query 平台通道（宿主无实现）。
+class FakeDeviceAudioService extends DeviceAudioService {
+  FakeDeviceAudioService({
+    this.permission = DeviceAudioPermission.granted,
+    this.audios = const [],
+  });
+
+  DeviceAudioPermission permission;
+  List<DeviceAudio> audios;
+  int ensureCalls = 0;
+
+  @override
+  Future<DeviceAudioPermission> ensurePermission() async {
+    ensureCalls++;
+    return permission;
+  }
+
+  @override
+  Future<List<DeviceAudio>> listAudios() async => audios;
+}
+
 /// 泵起完整 App（内存数据库 + 桩 KeyStorage），可注入自定义录音服务、
 /// 音频文件清理桩、导入服务、Markdown 导出服务/分享桩与外部持有的
 /// FakeKeyStorage（测试内预置 Key）。
@@ -41,6 +63,7 @@ Future<AppDatabase> pumpInterviewVaultApp(
   MarkdownExportService? markdownExportService,
   Future<void> Function(String path)? markdownSharer,
   FakeKeyStorage? keyStorage,
+  DeviceAudioService? deviceAudioService,
 }) async {
   final db = AppDatabase.forTesting(NativeDatabase.memory());
   await tester.pumpWidget(
@@ -61,6 +84,8 @@ Future<AppDatabase> pumpInterviewVaultApp(
               .overrideWithValue(markdownExportService),
         if (markdownSharer != null)
           markdownSharerProvider.overrideWithValue(markdownSharer),
+        deviceAudioServiceProvider
+            .overrideWithValue(deviceAudioService ?? FakeDeviceAudioService()),
       ],
       child: const InterviewVaultApp(),
     ),
