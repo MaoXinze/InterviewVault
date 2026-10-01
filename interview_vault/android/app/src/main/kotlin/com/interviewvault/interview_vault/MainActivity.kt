@@ -1,12 +1,17 @@
 package com.interviewvault.interview_vault
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.IntentCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -17,12 +22,15 @@ import io.flutter.plugin.common.MethodChannel
  *   （Android 13+ 为 READ_MEDIA_AUDIO，旧版 READ_EXTERNAL_STORAGE）
  * - listAudios：MediaStore 全量音频，按加入时间倒序（导入页点选导入，
  *   免去系统文件管理器翻目录）。仅本机读取，不上传。
+ * - takeSharedAudio：取走系统分享送来的音频（录音机私有目录导入入口）。
  */
 class MainActivity : FlutterActivity() {
     private val channelName = "device_audio"
     private val requestCode = 7001
 
     private var pendingPermissionResult: MethodChannel.Result? = null
+
+    private var pendingSharedAudio: Map<String, Any?>? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -38,9 +46,22 @@ class MainActivity : FlutterActivity() {
                             result.success(listAudios())
                         }
                     }
+                    "takeSharedAudio" -> result.success(
+                        pendingSharedAudio.also { pendingSharedAudio = null },
+                    )
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        captureSharedAudio(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        captureSharedAudio(intent)
     }
 
     /** 铃声包目录段（MIUI 会把铃声包登记成普通音乐，按路径排除） */
@@ -49,6 +70,53 @@ class MainActivity : FlutterActivity() {
 
     private fun isSoundPackPath(path: String): Boolean =
         path.lowercase().split('/', '\\').any { it in soundPackSegments }
+
+    /** 与 listAudios / 导入白名单一致的可导入格式 */
+    private val supportedExtensions =
+        setOf("mp3", "wav", "m4a", "aac", "ogg")
+
+    /**
+     * 录音机等应用"分享"来的音频（Manifest 注册 ACTION_SEND 接收任意音频 MIME）。
+     * MIUI/HyperOS 录音机把录音存在应用私有目录（Android/data/…/files/），
+     * Android 11+ 第三方完全读不到且 MediaStore 不收录——系统分享是拿到
+     * 这类文件的唯一入口。拷贝进缓存目录，Dart 侧 takeSharedAudio 领走
+     * 后走导入确认管线；拷贝失败静默忽略（导入页仍有文件管理器兜底）。
+     */
+    private fun captureSharedAudio(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_SEND) return
+        val uri = IntentCompat.getParcelableExtra(
+            intent, Intent.EXTRA_STREAM, Uri::class.java,
+        ) ?: return
+        val mime = intent.type ?: ""
+        var displayName = "shared_audio"
+        contentResolver.query(
+            uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null,
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                cursor.getString(0)?.takeIf { it.isNotBlank() }?.let {
+                    displayName = it
+                }
+            }
+        }
+        displayName = java.io.File(displayName).name
+        val ext = displayName.substringAfterLast('.', "").lowercase()
+        if (!mime.startsWith("audio/") && ext !in supportedExtensions) return
+        val dir = java.io.File(cacheDir, "shared_audio").apply { mkdirs() }
+        val target = java.io.File(dir, displayName)
+        try {
+            contentResolver.openInputStream(uri)?.use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            } ?: return
+        } catch (e: Exception) {
+            target.delete()
+            return
+        }
+        pendingSharedAudio = mapOf(
+            "path" to target.absolutePath,
+            "title" to displayName,
+            "sizeBytes" to target.length(),
+        )
+    }
 
     private fun hasAudioPermission(): Boolean {
         val permission = if (Build.VERSION.SDK_INT >= 33) {

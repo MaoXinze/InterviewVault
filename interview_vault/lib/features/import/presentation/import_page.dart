@@ -19,7 +19,9 @@ import '../device_audio_service.dart';
 
 /// 音频导入（W2-M2，PRD 2.3）：本机音频列表（MediaStore）点选 → 展示
 /// 时长/大小/格式 → 确认后复制进库目录并落一条草稿面试记录。
-/// 系统文件选择器保留为兜底入口。全程本地，不上传。
+/// 系统文件选择器保留为兜底入口；录音机等应用"分享到面试宝库"的音频
+/// 经 takeSharedAudio 进入同一确认管线（录音机私有目录第三方读不到）。
+/// 全程本地，不上传。
 class ImportPage extends ConsumerStatefulWidget {
   const ImportPage({super.key});
 
@@ -27,7 +29,8 @@ class ImportPage extends ConsumerStatefulWidget {
   ConsumerState<ImportPage> createState() => _ImportPageState();
 }
 
-class _ImportPageState extends ConsumerState<ImportPage> {
+class _ImportPageState extends ConsumerState<ImportPage>
+    with WidgetsBindingObserver {
   /// null = 加载中；denied = 权限被拒（引导态）
   DeviceAudioPermission? _permission;
   List<DeviceAudio>? _audios;
@@ -43,7 +46,15 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadAudios();
+    _receiveSharedAudio(); // 分享冷启动：进本页时取走待处理音频
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 分享热启动：App 被带回前台时取走待处理音频（onNewIntent → resumed）
+    if (state == AppLifecycleState.resumed) _receiveSharedAudio();
   }
 
   Future<void> _loadAudios() async {
@@ -63,9 +74,18 @@ class _ImportPageState extends ConsumerState<ImportPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _previewSub?.cancel();
     _previewPlayer?.dispose();
     super.dispose();
+  }
+
+  /// 取走"分享到面试宝库"的音频（录音机私有目录导入入口）：
+  /// 有就直接走本机点选同一条确认管线；没有则无事发生
+  Future<void> _receiveSharedAudio() async {
+    final shared = await ref.read(deviceAudioServiceProvider).takeSharedAudio();
+    if (shared == null) return;
+    await _pickFromDevice(shared);
   }
 
   /// 试听开关：同一文件再点一次即停止；换文件则替换播放器
@@ -252,6 +272,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
           ),
         ),
         if (_busy) const LinearProgressIndicator(minHeight: 2),
+        const _ShareHint(),
         Expanded(
           child: audios.isEmpty
               ? _EmptyBrowser(onSystemPick: _pickViaSystem)
@@ -328,6 +349,44 @@ class _ImportPageState extends ConsumerState<ImportPage> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// 录音机分享引导：录音机私有目录里的录音第三方读不到，分享是唯一入口。
+/// 本机列表里看不到的录音，用户需要知道去录音机里分享过来。
+class _ShareHint extends StatelessWidget {
+  const _ShareHint();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Container(
+        key: const Key('hint_share_import'),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.ios_share, size: 18, color: AppTheme.gold),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '录音机里的录音不在列表？它们存在系统保护目录。'
+                '请在录音机中选中录音 → 分享 → 选择「问渠」，'
+                '即可回到这里进入导入确认。',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

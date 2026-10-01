@@ -36,10 +36,16 @@ class FakeDeviceAudioService extends DeviceAudioService {
   FakeDeviceAudioService({
     this.permission = DeviceAudioPermission.granted,
     this.audios = const [],
+    this.sharedAudio,
   });
 
   DeviceAudioPermission permission;
   List<DeviceAudio> audios;
+
+  /// "分享到面试宝库"送来的待处理音频（取走即清空，模拟原生侧语义）
+  DeviceAudio? sharedAudio;
+  int takeSharedCalls = 0;
+
   int ensureCalls = 0;
 
   @override
@@ -50,6 +56,14 @@ class FakeDeviceAudioService extends DeviceAudioService {
 
   @override
   Future<List<DeviceAudio>> listAudios() async => audios;
+
+  @override
+  Future<DeviceAudio?> takeSharedAudio() async {
+    takeSharedCalls++;
+    final audio = sharedAudio;
+    sharedAudio = null;
+    return audio;
+  }
 }
 
 /// 泵起完整 App（内存数据库 + 桩 KeyStorage），可注入自定义录音服务、

@@ -174,6 +174,91 @@ void main() {
     await drainAppTimers(tester);
   });
 
+  testWidgets('导入：录音机分享送来的音频 → 直接进确认卡 → 确认落库', (tester) async {
+    final service = _StubImportService();
+    final device = FakeDeviceAudioService(
+      audios: [_deviceAudio('字节跳动_二面.mp3')],
+      sharedAudio: const DeviceAudio(
+        path: '/stub/cache/shared_audio/9月16日 下午5点00分.m4a',
+        title: '9月16日 下午5点00分.m4a',
+        sizeBytes: 58287391,
+      ),
+    );
+    final db = await pumpInterviewVaultApp(
+      tester,
+      audioImportService: service,
+      deviceAudioService: device,
+    );
+    addTearDown(db.close);
+
+    await _goImport(tester);
+
+    // 分享音频不经过列表点选：进入导入页即直接出确认卡（PRD 2.3 信息齐备；
+    // 格式来自桩的 inspect 固定值 mp3）
+    expect(device.takeSharedCalls, 1);
+    expect(find.text('9月16日 下午5点00分.m4a'), findsOneWidget);
+    expect(find.text('MP3'), findsOneWidget);
+    expect(find.text('55.6 MB'), findsOneWidget);
+
+    // 确认导入：复用同一管线（复制进库 + 落草稿面试记录）
+    await tester.tap(find.byKey(const Key('btn_import_confirm')));
+    await tester.pumpAndSettle();
+
+    expect(service.imported, hasLength(1));
+    expect(service.imported.single.fileName, '9月16日 下午5点00分.m4a');
+    final rows = await db.interviewsDao.getAll();
+    expect(rows, hasLength(1));
+    expect(rows.single.audioFilePath,
+        '/stub/recordings/imports/interview_stored.mp3');
+
+    await drainAppTimers(tester);
+  });
+
+  testWidgets('导入：回前台再收分享（热启动）；无分享时页面正常且有分享引导',
+      (tester) async {
+    final service = _StubImportService();
+    final device = FakeDeviceAudioService(audios: [
+      _deviceAudio('字节跳动_二面.mp3'),
+    ]);
+    final db = await pumpInterviewVaultApp(
+      tester,
+      audioImportService: service,
+      deviceAudioService: device,
+    );
+    addTearDown(db.close);
+
+    await _goImport(tester);
+
+    // 进入时没有分享：正常浏览视图 + 录音机分享引导横幅
+    expect(device.takeSharedCalls, 1);
+    expect(find.byKey(const Key('device_audio_0')), findsOneWidget);
+    expect(find.byKey(const Key('hint_share_import')), findsOneWidget);
+    expect(find.textContaining('录音机里的录音不在列表'), findsOneWidget);
+
+    // 热启动：离开 App 期间被分享，回到前台（resumed）时取走
+    device.sharedAudio = const DeviceAudio(
+      path: '/stub/cache/shared_audio/12月16日 上午5点19分.m4a',
+      title: '12月16日 上午5点19分.m4a',
+      sizeBytes: 1878766,
+    );
+    // 热启动：离开 App 期间被分享，回到前台（resumed）时取走。
+    // 生命周期状态机不允许跳变，按真实序列 inactive → hidden → paused 往返
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
+    expect(device.takeSharedCalls, 2);
+    expect(find.text('12月16日 上午5点19分.m4a'), findsOneWidget);
+    expect(find.byKey(const Key('btn_import_confirm')), findsOneWidget);
+
+    await drainAppTimers(tester);
+  });
+
   testWidgets('导入：媒体权限被拒 → 引导文案与去授权按钮，可再次请求', (tester) async {
     final service = _StubImportService();
     final device = FakeDeviceAudioService(

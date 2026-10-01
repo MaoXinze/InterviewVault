@@ -93,7 +93,16 @@ class JustAudioPlayback implements AudioPlayback {
   Future<void> toggle() async {
     final player = _player;
     if (player == null) return;
-    player.playing ? await player.pause() : await player.play();
+    if (player.playing) {
+      await player.pause();
+      return;
+    }
+    // 上一轮播完停在末尾（completed）：直接 play 是在末尾续播，一播即止，
+    // 用户视角就是"只能听一遍"——重播必须先回到开头
+    if (player.processingState == ProcessingState.completed) {
+      await player.seek(Duration.zero);
+    }
+    await player.play();
   }
 
   @override

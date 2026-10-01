@@ -82,4 +82,25 @@ class DeviceAudioService {
       return const [];
     }
   }
+
+  /// 取走录音机等应用"分享到面试宝库"送来的音频；没有则返回 null，取走即清空。
+  /// 背景：MIUI/HyperOS 录音机把录音存在应用私有目录（Android/data/…/files/），
+  /// Android 11+ 任何第三方都读不到该目录且 MediaStore 不收录——系统分享
+  /// 是拿到这类文件的唯一入口。原生侧已把内容拷贝到 App 缓存目录，
+  /// path 可直接读取/入库（复用 PickedAudio → 确认卡 → importFile 管线）。
+  Future<DeviceAudio?> takeSharedAudio() async {
+    try {
+      final row =
+          await _channel.invokeMapMethod<String, dynamic>('takeSharedAudio');
+      if (row == null) return null;
+      return DeviceAudio(
+        path: row['path'] as String,
+        title: (row['title'] as String?) ?? '未命名音频',
+        sizeBytes: (row['sizeBytes'] as num?)?.toInt() ?? 0,
+        addedAt: DateTime.now(),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 }
