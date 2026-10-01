@@ -158,7 +158,11 @@ class MainActivity : FlutterActivity() {
             Environment.getExternalStoragePublicDirectory(
                 Environment.DIRECTORY_DOWNLOADS,
             ),
-            java.io.File("/sdcard/MIUI/sound_recorder/recorder"),
+            // MIUI 录音机目录带 .nomedia（媒体库永不索引），必须显式扫描；
+            // 不同版本落在 app_rec（普通录音）/call_rec（通话）/fm_rec
+            java.io.File("/sdcard/MIUI/sound_recorder/app_rec"),
+            java.io.File("/sdcard/MIUI/sound_recorder/call_rec"),
+            java.io.File("/sdcard/MIUI/sound_recorder/fm_rec"),
         )
         for (dir in scanDirs) {
             val files = dir.listFiles() ?: continue

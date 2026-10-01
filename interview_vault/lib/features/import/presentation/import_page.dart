@@ -1,4 +1,7 @@
+import 'dart:async' show StreamSubscription, unawaited;
 import 'dart:io' show Platform;
+
+import 'package:just_audio/just_audio.dart';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
@@ -32,6 +35,11 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   ImportedAudioInfo? _info;
   bool _busy = false;
 
+  /// 试听：同一时刻最多播放一个文件，点播放键切换
+  AudioPlayer? _previewPlayer;
+  StreamSubscription<dynamic>? _previewSub;
+  String? _previewPath;
+
   @override
   void initState() {
     super.initState();
@@ -53,10 +61,59 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     });
   }
 
+  @override
+  void dispose() {
+    _previewSub?.cancel();
+    _previewPlayer?.dispose();
+    super.dispose();
+  }
+
+  /// 试听开关：同一文件再点一次即停止；换文件则替换播放器
+  Future<void> _togglePreview(DeviceAudio audio) async {
+    if (_previewPath == audio.path) {
+      await _stopPreview();
+      if (mounted) setState(() {});
+      return;
+    }
+    try {
+      await _stopPreview();
+      final player = AudioPlayer();
+      _previewPlayer = player;
+      _previewPath = audio.path;
+      if (mounted) setState(() {});
+      _previewSub = player.playerStateStream.listen((state) {
+        if (state.processingState == ProcessingState.completed && mounted) {
+          _stopPreview();
+          setState(() {});
+        }
+      });
+      await player.setFilePath(audio.path);
+      unawaited(player.play());
+    } on Exception {
+      await _stopPreview();
+      if (mounted) _showSnack('无法预览该音频（可能格式不支持）');
+    }
+  }
+
+  Future<void> _stopPreview() async {
+    _previewPath = null;
+    _previewSub?.cancel();
+    _previewSub = null;
+    final player = _previewPlayer;
+    _previewPlayer = null;
+    try {
+      await player?.stop();
+      await player?.dispose();
+    } on Exception {
+      // 释放失败不阻塞导入流程
+    }
+  }
+
   /// 从本机列表点选 → 直接探测格式信息（无需经系统选择器）
   Future<void> _pickFromDevice(DeviceAudio audio) async {
     if (_busy) return;
-    setState(() => _busy = true);
+    await _stopPreview();
+    if (mounted) setState(() => _busy = true);
     try {
       final service = ref.read(audioImportServiceProvider);
       // 双分隔符兜底：Android 路径为 /，Windows 测试宿主为 \
@@ -85,7 +142,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   /// 系统文件选择器兜底（SAF，覆盖媒体库之外的目录）
   Future<void> _pickViaSystem() async {
     if (_busy) return;
-    setState(() => _busy = true);
+    await _stopPreview();
+    if (mounted) setState(() => _busy = true);
     try {
       final service = ref.read(audioImportServiceProvider);
       final picked = await service.pick();
@@ -214,14 +272,37 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                             ),
                           formatFileSize(audio.sizeBytes),
                         ].join(' · ');
+                        final previewing = _previewPath == audio.path;
                         return ListTile(
                           key: Key('device_audio_$index'),
-                          leading: const Icon(Icons.graphic_eq,
-                              color: AppTheme.gold),
+                          leading: IconButton(
+                            key: Key('btn_preview_$index'),
+                            onPressed: () => _togglePreview(audio),
+                            icon: Icon(
+                              previewing
+                                  ? Icons.pause_circle_filled
+                                  : Icons.play_circle_outline,
+                              size: 30,
+                              color: previewing
+                                  ? AppTheme.gold
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                            ),
+                          ),
                           title: Text(
                             audio.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
+                            style: previewing
+                                ? Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.copyWith(
+                                      color: AppTheme.gold,
+                                      fontWeight: FontWeight.w700,
+                                    )
+                                : null,
                           ),
                           subtitle: Text(
                             subtitle,
