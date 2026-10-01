@@ -92,7 +92,8 @@ void main() {
     final sw = tester.widget<SwitchListTile>(
       find.byKey(const Key('settings_dark_mode')),
     );
-    expect(sw.value, isFalse);
+    // 默认亮色：点一次进入深色 → 开关翻为 true
+    expect(sw.value, isTrue);
     // 揭示完成后旧帧遮罩必须移除
     expect(find.byType(RawImage), findsNothing);
 

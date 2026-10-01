@@ -37,11 +37,11 @@ void main() {
     expect(find.text('问渠'), findsOneWidget);
 
     // 中段：仍在展示
-    await tester.pump(const Duration(milliseconds: 900));
+    await tester.pump(const Duration(milliseconds: 1200));
     expect(find.text('问渠'), findsOneWidget);
 
-    // 超过 1.6s 总时长：开屏从树上移除，露出正常界面
-    await tester.pump(const Duration(milliseconds: 900));
+    // 超过 2.0s 总时长：开屏从树上移除，露出正常界面
+    await tester.pump(const Duration(milliseconds: 1000));
     expect(find.text('问渠'), findsNothing);
     expect(find.byKey(const Key('page_home')), findsOneWidget);
 

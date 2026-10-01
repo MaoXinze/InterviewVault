@@ -105,7 +105,7 @@ void main() {
     await drainAppTimers(tester);
   });
 
-  testWidgets('我的页：API 服务配置入口可进入配置页；深色模式开关默认开启', (tester) async {
+  testWidgets('我的页：API 服务配置入口可进入配置页；深色模式开关默认关闭（默认亮色）', (tester) async {
     final db = await pumpInterviewVaultApp(tester);
     addTearDown(db.close);
 
@@ -117,7 +117,8 @@ void main() {
     final sw = tester.widget<SwitchListTile>(
       find.byKey(const Key('settings_dark_mode')),
     );
-    expect(sw.value, isTrue);
+    // 默认亮色：开关（深色模式）默认关闭
+    expect(sw.value, isFalse);
 
     await tester.tap(find.text('API 服务配置'));
     await tester.pumpAndSettle();

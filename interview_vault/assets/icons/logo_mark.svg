@@ -1,8 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
-  <!-- 品牌标志：题卡堆 + 问号 + 星花（单色线稿，随主题着色） -->
-  <rect x="17" y="5" width="24" height="18" rx="4" stroke="#000000" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="7" y="15" width="24" height="23" rx="4" stroke="#000000" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M15.5 23.5 c0-4.4 8-4.4 8 0 c0 2.8-4 2.3-4 5.4" stroke="#000000" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="19.5" cy="33.2" r="1.5" fill="#000000"/>
-  <path d="M44 8 v6 M41 11 h6" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
+  <!-- 品牌标志（立体版，与启动图标同构）：青铜后卡 + 鎏金渐变卡面 + 深绿问号 + 星花 -->
+  <defs>
+    <linearGradient id="goldCard" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F8DE8E"/>
+      <stop offset="0.5" stop-color="#E9BC4E"/>
+      <stop offset="1" stop-color="#CA9828"/>
+    </linearGradient>
+    <linearGradient id="cardHl" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFAE6" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#FFFAE6" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 后卡（青铜金 + 细金边，右上探出） -->
+  <g transform="rotate(9 30 17.5)">
+    <rect x="21.5" y="9.75" width="17" height="15.5" rx="3" fill="#A87C2A"/>
+    <rect x="22.3" y="10.55" width="15.4" height="13.9" rx="2.5" stroke="#E7BE62" stroke-width="0.35" opacity="0.8"/>
+  </g>
+
+  <!-- 前卡：投影 + 鎏金渐变面 + 高光 + 深绿问号 -->
+  <g transform="rotate(-7 22.5 26.5)">
+    <rect x="10.85" y="16.9" width="24.5" height="21.2" rx="3.9" fill="#05120C" opacity="0.45"/>
+    <rect x="10.25" y="15.9" width="24.5" height="21.2" rx="3.9" fill="url(#goldCard)"/>
+    <rect x="10.25" y="15.9" width="24.5" height="21.2" rx="3.9" fill="url(#cardHl)"/>
+    <g transform="translate(6.62 3.22) scale(0.836)" stroke="#183A2C" stroke-width="2.0" stroke-linecap="round" fill="none">
+      <path d="M15.5 24 A4 4 0 0 1 23.5 24"/>
+      <path d="M23.5 24 A4.5 4.5 0 0 1 19 28.5"/>
+      <circle cx="15.5" cy="24" r="1.0" fill="#183A2C" stroke="none"/>
+      <circle cx="23.5" cy="24" r="1.0" fill="#183A2C" stroke="none"/>
+      <circle cx="19" cy="28.5" r="1.0" fill="#183A2C" stroke="none"/>
+      <circle cx="19" cy="33.5" r="1.42" fill="#183A2C" stroke="none"/>
+    </g>
+  </g>
+
+  <!-- 星花 -->
+  <polygon points="37.5,5.1 38.15,6.85 39.9,7.5 38.15,8.15 37.5,9.9 36.85,8.15 35.1,7.5 36.85,6.85" fill="#F9DE8A"/>
 </svg>

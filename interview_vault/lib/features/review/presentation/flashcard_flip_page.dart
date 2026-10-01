@@ -263,50 +263,98 @@ class _FrontCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tags = decodeCardTags(card.tags);
     return _CardShell(
-      watermark: const CardIllustration.question(opacity: 0.16),
+      dark: true,
+      watermark: const CardIllustration.question(opacity: 0.20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (tags.isNotEmpty)
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final tag in tags)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: AppTheme.gold.withValues(alpha: 0.5)),
-                    ),
-                    child: Text(
-                      tag,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: AppTheme.goldDeep,
-                          ),
-                    ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 「Q」圆牌：题面身份标记（黑金卡签名元素）
+              Container(
+                width: 34,
+                height: 34,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFF6D98C), Color(0xFFD9A93A)],
                   ),
-              ],
-            ),
+                ),
+                alignment: Alignment.center,
+                child: const Text(
+                  'Q',
+                  style: TextStyle(
+                    color: Color(0xFF183A2C),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              if (tags.isNotEmpty)
+                Expanded(
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final tag in tags)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: AppTheme.gold.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: Text(
+                            tag,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(color: AppTheme.gold),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
           const Spacer(),
           // 普通 Text 而非 SelectableText：SelectableText 的拖拽选择手势
           // 会在竞技场里抢走卡片堆的横滑；文本复制走详情页
           Text(
             card.question,
-            style: Theme.of(context)
-                .textTheme
-                .titleLarge
-                ?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFFFBF6E9),
+                  height: 1.35,
+                ),
           ),
-          const SizedBox(height: 12),
-          if (!preview)
-            Text(
-              '点击翻面看回答 · 支持左右滑动',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+          if (!preview) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Icon(
+                  Icons.swipe,
+                  size: 16,
+                  color: Colors.white.withValues(alpha: 0.72),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '点击翻面 · 支持左右滑动',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.72),
+                      ),
+                ),
+                const Spacer(),
+                const Icon(Icons.auto_awesome, size: 16, color: AppTheme.gold),
+              ],
             ),
+          ],
         ],
       ),
     );
@@ -321,17 +369,33 @@ class _BackCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final markerColor = Theme.of(context).brightness == Brightness.dark
+        ? AppTheme.gold
+        : AppTheme.goldDeep;
     return _CardShell(
       watermark: const CardIllustration.answer(opacity: 0.1),
       child: ListView(
         shrinkWrap: true,
         children: [
-          Text(
-            '我的回答',
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
+          Row(
+            children: [
+              Container(
+                width: 3,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: markerColor,
+                  borderRadius: BorderRadius.circular(2),
                 ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '我的回答',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(
@@ -342,16 +406,40 @@ class _BackCard extends StatelessWidget {
           ),
           if (card.aiReference != null && card.aiReference!.isNotEmpty) ...[
             const Divider(height: 24),
-            Text(
-              'AI 参考思路',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: AppTheme.goldDeep,
-                    fontWeight: FontWeight.w700,
+            Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: markerColor,
+                    borderRadius: BorderRadius.circular(2),
                   ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'AI 参考思路',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: AppTheme.goldDeep,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ],
             ),
             const SizedBox(height: 6),
-            Text(card.aiReference!, style: Theme.of(context).textTheme.bodyMedium),
+            Text(
+              card.aiReference!,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           ],
+          const SizedBox(height: 10),
+          Text(
+            '再次点击翻回正面',
+            textAlign: TextAlign.right,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                ),
+          ),
         ],
       ),
     );
@@ -359,30 +447,54 @@ class _BackCard extends StatelessWidget {
 }
 
 class _CardShell extends StatelessWidget {
-  const _CardShell({required this.child, this.watermark});
+  const _CardShell({required this.child, this.watermark, this.dark = false});
 
   final Widget child;
 
   /// 右上角鎏金线稿水印（场景插画，内容之下）
   final Widget? watermark;
 
+  /// 正面走「墨绿鎏金黑卡」面；背面保持纸面（翻面有明暗对比）
+  final bool dark;
+
   @override
   Widget build(BuildContext context) {
+    final decoration = dark
+        ? BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF224736), Color(0xFF0F1E17)],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppTheme.gold.withValues(alpha: 0.55),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.gold.withValues(alpha: 0.18),
+                blurRadius: 28,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          )
+        : BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.gold.withValues(alpha: 0.35)),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.gold.withValues(alpha: 0.12),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          );
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.gold.withValues(alpha: 0.35)),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.gold.withValues(alpha: 0.12),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      decoration: decoration,
       child: Stack(
         children: [
           if (watermark != null)

@@ -54,10 +54,11 @@ abstract final class AppTheme {
   }
 }
 
-/// 暗色模式优先：默认 ThemeMode.dark，切换走圆形扩散（模式①）。
+/// 默认亮色（2026-10 用户决策）；暗色仍是设计原点，金/绿的分工不变。
+/// 切换走圆形扩散（模式①）。
 class ThemeModeNotifier extends Notifier<ThemeMode> {
   @override
-  ThemeMode build() => ThemeMode.dark;
+  ThemeMode build() => ThemeMode.light;
 
   void set(ThemeMode mode) => state = mode;
 
