@@ -127,6 +127,7 @@ class _FlashcardFlipPageState extends ConsumerState<FlashcardFlipPage>
                         ? _FrontCard(card: _cards[_index + 1], preview: true)
                         : null,
                     onCommit: _onSwipeCommit,
+                    stampBuilder: (progress) => _SwipeStamp(progress: progress),
                   ),
                 ),
                 SafeArea(
@@ -261,100 +262,112 @@ class _FrontCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final tags = decodeCardTags(card.tags);
-    return _CardShell(
-      dark: true,
-      watermark: const CardIllustration.question(opacity: 0.20),
+    return _cardFace(
+      context,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 「Q」圆牌：题面身份标记（黑金卡签名元素）
-              Container(
-                width: 34,
-                height: 34,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFFF6D98C), Color(0xFFD9A93A)],
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: const Text(
-                  'Q',
-                  style: TextStyle(
-                    color: Color(0xFF183A2C),
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
+              const _FaceBadge(letter: '问'),
               const SizedBox(width: 10),
-              if (tags.isNotEmpty)
-                Expanded(
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (final tag in tags)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 3),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: AppTheme.gold.withValues(alpha: 0.5),
-                            ),
+              Text(
+                '问题',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 3,
+                    ),
+              ),
+              const Spacer(),
+              // 标签折叠展示：最多 2 个小点chip，多出聚合为 +n（Quizlet 式留白）
+              ...[
+                for (final tag in tags.take(2))
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: isDark
+                            ? AppTheme.gold.withValues(alpha: 0.45)
+                            : AppTheme.goldDeep.withValues(alpha: 0.45),
+                      ),
+                    ),
+                    child: Text(
+                      tag,
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelSmall
+                          ?.copyWith(
+                            color: isDark ? AppTheme.gold : AppTheme.goldDeep,
                           ),
-                          child: Text(
-                            tag,
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(color: AppTheme.gold),
-                          ),
-                        ),
-                    ],
+                    ),
                   ),
+              ],
+              if (tags.length > 2)
+                Text(
+                  '+${tags.length - 2}',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
             ],
           ),
-          const Spacer(),
-          // 普通 Text 而非 SelectableText：SelectableText 的拖拽选择手势
-          // 会在竞技场里抢走卡片堆的横滑；文本复制走详情页
-          Text(
-            card.question,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFFFBF6E9),
-                  height: 1.35,
+          Expanded(
+            // Quizlet 式题面：大字居中，过长整体等比缩小（FittedBox）
+            child: Center(
+              child: LayoutBuilder(
+                builder: (context, cons) => FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: SizedBox(
+                    width: cons.maxWidth,
+                    child: Text(
+                      card.question,
+                      textAlign: TextAlign.center,
+                      maxLines: 8,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            height: 1.3,
+                          ),
+                    ),
+                  ),
                 ),
+              ),
+            ),
           ),
-          if (!preview) ...[
-            const SizedBox(height: 14),
+          if (!preview)
             Row(
               children: [
                 Icon(
                   Icons.swipe,
-                  size: 16,
-                  color: Colors.white.withValues(alpha: 0.72),
+                  size: 15,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 4),
                 Text(
-                  '点击翻面 · 支持左右滑动',
+                  '左右滑动判定',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.72),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                 ),
                 const Spacer(),
-                const Icon(Icons.auto_awesome, size: 16, color: AppTheme.gold),
+                const Icon(Icons.auto_awesome, size: 14, color: AppTheme.gold),
+                const SizedBox(width: 4),
+                Text(
+                  '点击翻面',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
               ],
             ),
-          ],
         ],
       ),
     );
@@ -369,70 +382,98 @@ class _BackCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final markerColor = Theme.of(context).brightness == Brightness.dark
-        ? AppTheme.gold
-        : AppTheme.goldDeep;
-    return _CardShell(
-      watermark: const CardIllustration.answer(opacity: 0.1),
-      child: ListView(
-        shrinkWrap: true,
+    return _cardFace(
+      context,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                width: 3,
-                height: 14,
-                decoration: BoxDecoration(
-                  color: markerColor,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 6),
+              const _FaceBadge(letter: '答', green: true),
+              const SizedBox(width: 10),
               Text(
-                '我的回答',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                '参考',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w700,
+                      letterSpacing: 3,
                     ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            (card.myAnswer == null || card.myAnswer!.isEmpty)
-                ? '未记录回答'
-                : card.myAnswer!,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          if (card.aiReference != null && card.aiReference!.isNotEmpty) ...[
-            const Divider(height: 24),
-            Row(
+          const SizedBox(height: 12),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
               children: [
-                Container(
-                  width: 3,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: markerColor,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 6),
                 Text(
-                  'AI 参考思路',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: AppTheme.goldDeep,
+                  '我的回答',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w700,
+                        letterSpacing: 2,
                       ),
                 ),
+                const SizedBox(height: 6),
+                Text(
+                  (card.myAnswer == null || card.myAnswer!.isEmpty)
+                      ? '未记录回答'
+                      : card.myAnswer!,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyLarge
+                      ?.copyWith(height: 1.5),
+                ),
+                if (card.aiReference != null &&
+                    card.aiReference!.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  // AI 参考思路：金底面板（品牌签名块）
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppTheme.gold.withValues(
+                          alpha:
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? 0.10
+                                  : 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppTheme.gold.withValues(alpha: 0.30),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const CardIllustration.bulb(size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              'AI 参考思路',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelMedium
+                                  ?.copyWith(
+                                    color: AppTheme.goldDeep,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          card.aiReference!,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              card.aiReference!,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ],
-          const SizedBox(height: 10),
+          ),
+          const SizedBox(height: 8),
           Text(
             '再次点击翻回正面',
             textAlign: TextAlign.right,
@@ -446,66 +487,115 @@ class _BackCard extends StatelessWidget {
   }
 }
 
-class _CardShell extends StatelessWidget {
-  const _CardShell({required this.child, this.watermark, this.dark = false});
+/// 「问」/「答」面别徽标：鎏金渐变圆角块（题面身份签名）
+class _FaceBadge extends StatelessWidget {
+  const _FaceBadge({required this.letter, this.green = false});
 
-  final Widget child;
+  final String letter;
 
-  /// 右上角鎏金线稿水印（场景插画，内容之下）
-  final Widget? watermark;
-
-  /// 正面走「墨绿鎏金黑卡」面；背面保持纸面（翻面有明暗对比）
-  final bool dark;
+  /// 绿底白字 = 背面（与正面金底深字形成翻面明暗语义）
+  final bool green;
 
   @override
   Widget build(BuildContext context) {
-    final decoration = dark
-        ? BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF224736), Color(0xFF0F1E17)],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: AppTheme.gold.withValues(alpha: 0.55),
-              width: 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.gold.withValues(alpha: 0.18),
-                blurRadius: 28,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          )
-        : BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppTheme.gold.withValues(alpha: 0.35)),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.gold.withValues(alpha: 0.12),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          );
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: decoration,
-      child: Stack(
-        children: [
-          if (watermark != null)
-            Positioned(
-              top: 0,
-              right: 0,
-              child: IgnorePointer(child: watermark!),
-            ),
-          Positioned.fill(child: child),
-        ],
+      width: 26,
+      height: 26,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        gradient: green
+            ? const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF3D9B6F), Color(0xFF2F7D5F)],
+              )
+            : const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFF6D98C), Color(0xFFD9A93A)],
+              ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        letter,
+        style: TextStyle(
+          color: green ? Colors.white : const Color(0xFF183A2C),
+          fontWeight: FontWeight.w900,
+          fontSize: 13,
+        ),
       ),
     );
   }
+}
+
+/// Quizlet 式判定章：右滑「已掌握」/ 左滑「再看看」，
+/// 随拖动深度淡入放大，跟随卡片倾斜。
+class _SwipeStamp extends StatelessWidget {
+  const _SwipeStamp({required this.progress});
+
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = progress.abs();
+    if (p < 0.06) return const SizedBox.shrink();
+    final right = progress > 0;
+    final color = right ? const Color(0xFF3D9B6F) : const Color(0xFFE8873B);
+    final t = (p / 0.4).clamp(0.0, 1.0);
+    return Center(
+      child: Opacity(
+        opacity: Curves.easeOut.transform(t),
+        child: Transform.rotate(
+          angle: right ? -0.16 : 0.16,
+          child: Transform.scale(
+            scale: 0.82 + 0.18 * Curves.easeOutBack.transform(t),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: color, width: 3.5),
+                color: Colors.white.withValues(alpha: 0.10),
+              ),
+              child: Text(
+                right ? '已掌握' : '再看看',
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 26,
+                  letterSpacing: 6,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 卡面基底（Quizlet 式留白：大圆角、细边、柔和落影、充足内边距）
+Widget _cardFace(BuildContext context, {required Widget child}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(24),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.08)
+            : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.08),
+          blurRadius: 30,
+          offset: const Offset(0, 12),
+        ),
+      ],
+    ),
+    child: child,
+  );
 }

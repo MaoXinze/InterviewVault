@@ -348,18 +348,42 @@ void main() {
     await drainAppTimers(tester);
   });
 
-  testWidgets('场景插画：卡片水印 + 完成页奖牌', (tester) async {
+  testWidgets('Quizlet 式卡面：判定章随拖动浮现，翻面金底面板灯泡，完成页奖牌', (tester) async {
     final cards = await seedCards();
     await pumpFlip(tester, cards);
 
-    // 正面问题水印 + 背后下一张预览的水印
-    expect(find.byType(CardIllustration), findsNWidgets(2));
+    // 右滑中段：「已掌握」判定章浮现（120px 未过阈值）
+    final rightGesture = await dragSteps(
+      tester,
+      find.byKey(const Key('flip_card_fc-1')),
+      const Offset(120, 0),
+      stepInterval: const Duration(milliseconds: 100),
+    );
+    expect(find.text('已掌握'), findsOneWidget);
+    await rightGesture.up();
+    await tester.pumpAndSettle();
+    // 未过阈值回弹 → 章消失
+    expect(find.text('已掌握'), findsNothing);
+
+    // 左滑中段：「再看看」
+    final leftGesture = await dragSteps(
+      tester,
+      find.byKey(const Key('flip_card_fc-1')),
+      const Offset(-120, 0),
+      stepInterval: const Duration(milliseconds: 100),
+    );
+    expect(find.text('再看看'), findsOneWidget);
+    await leftGesture.up();
+    await tester.pumpAndSettle();
+
+    // 翻面：AI 参考思路金底面板，灯泡插画
+    await tester.tap(find.byKey(const Key('flip_card_fc-1')));
+    await tester.pumpAndSettle();
+    expect(find.text('AI 参考思路'), findsOneWidget);
+    expect(find.byType(CardIllustration), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('btn_reviewed_next')));
     await tester.pumpAndSettle();
-    // 第二张为最后一张（无背后预览）→ 单水印
-    expect(find.byType(CardIllustration), findsOneWidget);
-
     await tester.tap(find.byKey(const Key('btn_reviewed_next')));
     await tester.pumpAndSettle();
     // 完成页：奖牌插画

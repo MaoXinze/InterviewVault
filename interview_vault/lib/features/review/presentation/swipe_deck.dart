@@ -65,6 +65,7 @@ class SwipeDeck extends StatefulWidget {
     this.behind,
     required this.onCommit,
     this.padding = const EdgeInsets.all(20),
+    this.stampBuilder,
   });
 
   /// 当前卡（含点击翻面的手势，堆只负责横滑与变换）
@@ -78,6 +79,10 @@ class SwipeDeck extends StatefulWidget {
   /// 提交回调：飞出动画结束后调用，deck 等待其完成（数据推进/落库）
   /// 再落位——保证落位后正面即新卡，无旧卡闪回。
   final Future<void> Function(SwipeDirection direction) onCommit;
+
+  /// 判定章（Quizlet 式）：随拖动进度 (-1..1) 出现的叠层，
+  /// 画在卡片坐标系内（跟随倾斜/形变），不拦截手势。null = 无。
+  final Widget Function(double progress)? stampBuilder;
 
   @override
   State<SwipeDeck> createState() => _SwipeDeckState();
@@ -187,6 +192,24 @@ class _SwipeDeckState extends State<SwipeDeck>
         builder: (context, constraints) {
           // 卡片净宽（阈值/视差按可见卡面计算，不含外边距）
           _width = constraints.maxWidth;
+          Widget front = GestureDetector(
+            onHorizontalDragStart: _onDragStart,
+            onHorizontalDragUpdate: _onDragUpdate,
+            onHorizontalDragEnd: _onDragEnd,
+            child: widget.front,
+          );
+          final stampBuilder = widget.stampBuilder;
+          if (stampBuilder != null) {
+            front = Stack(
+              textDirection: TextDirection.ltr,
+              children: [
+                front,
+                Positioned.fill(
+                  child: IgnorePointer(child: stampBuilder(_progress)),
+                ),
+              ],
+            );
+          }
           return AnimatedBuilder(
             animation: _controller,
             builder: (context, child) {
@@ -215,12 +238,7 @@ class _SwipeDeckState extends State<SwipeDeck>
                 ],
               );
             },
-            child: GestureDetector(
-              onHorizontalDragStart: _onDragStart,
-              onHorizontalDragUpdate: _onDragUpdate,
-              onHorizontalDragEnd: _onDragEnd,
-              child: widget.front,
-            ),
+            child: front,
           );
         },
       ),
