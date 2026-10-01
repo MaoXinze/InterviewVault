@@ -93,7 +93,7 @@ class PrivacyPage extends StatelessWidget {
             title: '用户协议',
             children: const [
               Text(
-                '1. InterviewVault 是本地优先的个人面试复盘工具，'
+                '1. 问渠是本地优先的个人面试复盘工具，'
                 '按"现状"提供，不承诺适用于任何特定目的。\n'
                 '2. 录音、转写、标注与卡片内容均由你自己产生与管理，'
                 '请遵守所在场景的法律法规与保密义务，勿录制未获授权的对话。\n'
@@ -108,7 +108,7 @@ class PrivacyPage extends StatelessWidget {
           const SizedBox(height: 8),
           const ListTile(
             leading: Icon(Icons.info_outline),
-            title: Text('InterviewVault v1.0.0'),
+            title: Text('问渠 v1.0.0'),
             subtitle: Text('本政策自 2026-09-27 起生效 · 本地优先 · 无账号无后端'),
           ),
         ],

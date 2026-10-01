@@ -44,7 +44,7 @@ class _InterviewVaultAppState extends ConsumerState<InterviewVaultApp> {
     return ThemeRevealHost(
       controller: reveal,
       child: MaterialApp.router(
-        title: 'InterviewVault',
+        title: '问渠',
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
         themeMode: themeMode,

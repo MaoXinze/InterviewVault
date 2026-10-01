@@ -1,5 +1,5 @@
 name: interview_vault
-description: "InterviewVault — 本地优先的个人面试知识库：录音→转写→标注→卡片→导出。"
+description: "问渠（InterviewVault）— 本地优先的个人面试知识库：录音→转写→标注→卡片→导出。"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -92,6 +92,7 @@ dev_dependencies:
   # path_provider 平台桩（录音目录/文件清理单测）
   path_provider_platform_interface: ^2.1.2
   plugin_platform_interface: ^2.1.8
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -138,3 +139,11 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# 启动图标生成（dart run flutter_launcher_icons）：墨绿×鎏金 题卡+问号
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#12241C"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"

@@ -213,7 +213,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 const ListTile(
                   leading: Icon(Icons.info_outline),
                   title: Text('关于'),
-                  subtitle: Text('InterviewVault v1.0.0 · 本地优先 · 无账号无后端'),
+                  subtitle: Text('问渠 v1.0.0 · 本地优先 · 无账号无后端'),
                 ),
               ],
             ),

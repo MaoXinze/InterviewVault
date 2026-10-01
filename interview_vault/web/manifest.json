@@ -1,11 +1,11 @@
 {
-    "name": "interview_vault",
-    "short_name": "interview_vault",
+    "name": "问渠",
+    "short_name": "问渠",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0E1411",
+    "theme_color": "#0E1411",
+    "description": "本地优先的个人面试知识库：录音→转写→标注→卡片→导出。",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
