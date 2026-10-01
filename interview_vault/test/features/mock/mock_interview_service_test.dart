@@ -388,7 +388,7 @@ void main() {
           .generateFeedback(question: '介绍项目', answer: '我做了一款 App')
           .toList();
 
-      final adapter = client!.dio.httpClientAdapter as _CapturingAdapter;
+      final adapter = client.dio.httpClientAdapter as _CapturingAdapter;
       final messages =
           (adapter.requests.single.data as Map)['messages'] as List;
       final system = messages
