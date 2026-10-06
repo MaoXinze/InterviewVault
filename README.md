@@ -11,7 +11,7 @@
 它不是"AI 面试工具"，而是面试场景下的知识管理工具：核心价值不是"帮你面试"，而是"帮你把每一次面试变成可复用的资产"。
 
 <p align="center">
-  <img src="docs/screenshots/01_launch_native.png" width="260" alt="启动页"/>
+  <img src="docs/screenshots/10_splash_v3.png" width="260" alt="开屏（默认亮色）"/>
   <img src="docs/screenshots/04_home.png" width="260" alt="首页：待回顾提醒 / 今日汇总 / 最近面试"/>
 </p>
 
