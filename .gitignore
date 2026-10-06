@@ -53,6 +53,9 @@ app.*.map.json
 .env.*
 secrets/
 
+# 构建产物 APK 不入库（>100MB 超 GitHub 限制，改由 GitHub Releases 发布）
+interview_vault/dist/*.apk
+
 # ZCode session-local plan cache
 .zcode/plans/
 .superpowers/
